@@ -64,10 +64,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-5 py-4">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors">
-            <GraduationCap className="h-4.5 w-4.5 text-primary" />
+      <SidebarHeader className="border-b border-sidebar-border px-5 py-4">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-500/20 group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all">
+            <GraduationCap className="h-4.5 w-4.5 text-white" />
           </div>
           <div>
             <h1 className="text-sm font-bold leading-tight tracking-tight">StructPrep</h1>
@@ -78,7 +78,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Study</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Study</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {studyItems.map((item) => (
@@ -94,7 +94,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Drills</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Drills</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {drillItems.map((item) => (
@@ -110,7 +110,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Reference</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Reference</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {referenceItems.map((item) => (
@@ -126,7 +126,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Manage</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Manage</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {manageItems.map((item) => (
@@ -142,10 +142,13 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t px-5 py-3">
-        <p className="text-[10px] text-muted-foreground">
-          Target: June 2026 PE Exam
-        </p>
+      <SidebarFooter className="border-t border-sidebar-border px-5 py-3">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <p className="text-[10px] text-muted-foreground">
+            Target: June 2026 PE Exam
+          </p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

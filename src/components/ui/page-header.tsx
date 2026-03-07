@@ -12,7 +12,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   icon,
-  iconGradient = "from-primary/20 to-primary/5",
+  iconGradient = "from-indigo-500 to-violet-600",
   iconAccent,
   title,
   description,
@@ -25,7 +25,7 @@ export function PageHeader({
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${iconGradient} ring-1 ring-primary/10 ${iconAccent || "text-primary"}`}
+              className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${iconGradient} shadow-lg shadow-indigo-500/15 dark:shadow-indigo-500/10 ${iconAccent || "text-white"}`}
             >
               {icon}
             </div>
@@ -75,7 +75,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`rounded-xl border bg-gradient-to-br ${gradient} p-4`}
+      className={`rounded-xl border bg-gradient-to-br ${gradient} p-4 hover-lift`}
     >
       <div className="flex items-center gap-2 mb-1">
         <span className={iconColor}>{icon}</span>

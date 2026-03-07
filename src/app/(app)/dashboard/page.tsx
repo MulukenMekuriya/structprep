@@ -25,7 +25,9 @@ import {
   GraduationCap,
   LayoutDashboard,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
+import { CircularGauge } from "@/components/ui/circular-gauge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -173,6 +175,7 @@ export default async function DashboardPage() {
       {/* Header */}
       <PageHeader
         icon={<LayoutDashboard className="h-6 w-6" />}
+        iconGradient="from-indigo-500 to-violet-600"
         title={
           isNewUser
             ? `Welcome${firstName ? `, ${firstName}` : ""}!`
@@ -197,29 +200,29 @@ export default async function DashboardPage() {
 
       {/* New User Onboarding */}
       {isNewUser && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <GraduationCap className="h-6 w-6 text-primary" />
-              </div>
-              <div className="flex-1 space-y-1">
-                <h2 className="font-semibold">Get started with your first practice session</h2>
-                <p className="text-sm text-muted-foreground">
-                  Answer 10 questions to unlock your personalized dashboard with accuracy tracking,
-                  weak area detection, and an exam readiness score.
-                </p>
-              </div>
-              <Link
-                href="/practice"
-                className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-sm h-10 px-6 shrink-0 gap-2 hover:bg-primary/90 transition-colors"
-              >
-                Start Practicing
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-purple-500/10 p-6 md:p-8">
+          <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
+          <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-violet-500/5 blur-2xl" />
+          <div className="relative flex flex-col md:flex-row items-start md:items-center gap-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20">
+              <Sparkles className="h-7 w-7 text-white" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex-1 space-y-1.5">
+              <h2 className="text-lg font-bold tracking-tight">Get started with your first practice session</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Answer 10 questions to unlock your personalized dashboard with accuracy tracking,
+                weak area detection, and an exam readiness score.
+              </p>
+            </div>
+            <Link
+              href="/practice"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold text-sm h-11 px-7 shrink-0 gap-2 hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/20 glow-primary"
+            >
+              Start Practicing
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       )}
 
       {/* Main Grid — 2 columns on desktop */}
@@ -338,36 +341,35 @@ export default async function DashboardPage() {
 
           {/* Weak Areas Alert */}
           {weakAreas.length > 0 && (
-            <Card className="border-orange-500/20 bg-orange-500/5">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-                    <AlertTriangle className="h-4.5 w-4.5 text-orange-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">Focus Areas</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {weakAreas.map((topic) => (
-                        <Badge
-                          key={topic}
-                          variant="outline"
-                          className="text-[11px] border-orange-500/30 text-orange-600 dark:text-orange-400"
-                        >
-                          {TOPIC_SHORT_LABELS[topic]} {topicStats[topic].accuracy}%
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <Link
-                    href="/practice/session?mode=weak-areas&count=15"
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 shrink-0 gap-1 bg-orange-500 hover:bg-orange-600 text-white transition-colors"
-                  >
-                    <Zap className="h-3.5 w-3.5" />
-                    Fix Weaknesses
-                  </Link>
+            <div className="relative overflow-hidden rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent p-5">
+              <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-orange-500/10 blur-2xl" />
+              <div className="relative flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 shadow-md shadow-orange-500/15">
+                  <AlertTriangle className="h-5 w-5 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Focus Areas</p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {weakAreas.map((topic) => (
+                      <Badge
+                        key={topic}
+                        variant="outline"
+                        className="text-[11px] border-orange-500/30 text-orange-600 dark:text-orange-400 bg-orange-500/5"
+                      >
+                        {TOPIC_SHORT_LABELS[topic]} {topicStats[topic].accuracy}%
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <Link
+                  href="/practice/session?mode=weak-areas&count=15"
+                  className="inline-flex items-center justify-center rounded-xl text-sm font-semibold h-9 px-4 shrink-0 gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 text-white transition-opacity shadow-md shadow-orange-500/15"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Fix Weaknesses
+                </Link>
+              </div>
+            </div>
           )}
 
           {/* Recent Sessions */}
@@ -429,57 +431,59 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           {/* Exam Readiness */}
           {!isNewUser ? (
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="h-4 w-4" />
+                  <Target className="h-4 w-4 text-primary" />
                   Exam Readiness
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center py-2">
-                  <div className={`text-5xl font-bold tabular-nums ${readinessColor}`}>
-                    {readinessScore}
-                    <span className="text-2xl">%</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {readinessScore >= 80
-                      ? "Strong — you're on track!"
-                      : readinessScore >= 60
-                        ? "Getting there — keep pushing"
-                        : readinessScore >= 30
-                          ? "Building foundations"
-                          : "Keep practicing to build your score"}
-                  </p>
+                <div className="flex justify-center py-3">
+                  <CircularGauge
+                    value={readinessScore}
+                    colorClass={readinessColor}
+                    label={
+                      readinessScore >= 80
+                        ? "On track!"
+                        : readinessScore >= 60
+                          ? "Keep pushing"
+                          : readinessScore >= 30
+                            ? "Building up"
+                            : "Keep going"
+                    }
+                  />
                 </div>
                 <div className="space-y-2.5">
                   {[
-                    { label: "Accuracy", value: weightedAccuracyScore, detail: `${weightedAccuracyScore}%` },
-                    { label: "Coverage", value: coverageScore, detail: `${topicsCovered}/${NCEES_TOPICS.length}` },
-                    { label: "Volume", value: volumeScore, detail: `${totalAttempted}/${TARGET_QUESTIONS}` },
-                    { label: "Streak", value: consistencyScore, detail: `${studyStreak}d` },
-                  ].map(({ label, value, detail }) => (
+                    { label: "Accuracy", value: weightedAccuracyScore, detail: `${weightedAccuracyScore}%`, color: "[&>div]:bg-emerald-500" },
+                    { label: "Coverage", value: coverageScore, detail: `${topicsCovered}/${NCEES_TOPICS.length}`, color: "[&>div]:bg-blue-500" },
+                    { label: "Volume", value: volumeScore, detail: `${totalAttempted}/${TARGET_QUESTIONS}`, color: "[&>div]:bg-violet-500" },
+                    { label: "Streak", value: consistencyScore, detail: `${studyStreak}d`, color: "[&>div]:bg-orange-500" },
+                  ].map(({ label, value, detail, color }) => (
                     <div key={label} className="space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-muted-foreground">{label}</span>
-                        <span className="tabular-nums">{detail}</span>
+                        <span className="tabular-nums font-medium">{detail}</span>
                       </div>
-                      <Progress value={value} className="h-1" />
+                      <Progress value={value} className={`h-1.5 ${color}`} />
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-muted/30">
-              <CardContent className="pt-6 text-center space-y-2">
-                <Target className="h-8 w-8 mx-auto text-muted-foreground/50" />
-                <p className="text-sm font-medium">Exam Readiness</p>
+            <Card className="bg-gradient-to-br from-muted/30 to-muted/10 overflow-hidden">
+              <CardContent className="pt-6 text-center space-y-3">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/10">
+                  <Target className="h-7 w-7 text-primary/40" />
+                </div>
+                <p className="text-sm font-semibold">Exam Readiness</p>
                 <p className="text-xs text-muted-foreground">
                   Complete 5+ questions to unlock your readiness score
                 </p>
-                <Progress value={Math.round((totalAttempted / 5) * 100)} className="h-1 mt-2" />
-                <p className="text-[10px] text-muted-foreground">{totalAttempted}/5 questions</p>
+                <Progress value={Math.round((totalAttempted / 5) * 100)} className="h-1.5 [&>div]:bg-primary" />
+                <p className="text-[10px] text-muted-foreground tabular-nums">{totalAttempted}/5 questions</p>
               </CardContent>
             </Card>
           )}
@@ -487,55 +491,36 @@ export default async function DashboardPage() {
           {/* Quick Actions — Vertical stack */}
           <div className="space-y-2">
             <SectionHeader title="Quick Actions" />
-            <Link
-              href="/practice"
-              className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-3 transition-all hover:shadow-md hover:border-primary/30 group"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-                <BookOpen className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Practice</p>
-                <p className="text-[11px] text-muted-foreground">Topic-based questions</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-            </Link>
-            <Link
-              href="/exam"
-              className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-blue-500/5 to-transparent p-3 transition-all hover:shadow-md hover:border-blue-500/30 group"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-                <Clock className="h-4 w-4 text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Mock Exam</p>
-                <p className="text-[11px] text-muted-foreground">80 questions, 9 hours</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
-            </Link>
-            <Link
-              href="/tutor"
-              className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-violet-500/5 to-transparent p-3 transition-all hover:shadow-md hover:border-violet-500/30 group"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-                <MessageSquare className="h-4 w-4 text-violet-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">AI Tutor</p>
-                <p className="text-[11px] text-muted-foreground">Ask anything</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
-            </Link>
+            {[
+              { href: "/practice", icon: BookOpen, label: "Practice", sublabel: "Topic-based questions", gradient: "from-indigo-500 to-violet-600", shadow: "shadow-indigo-500/15" },
+              { href: "/exam", icon: Clock, label: "Mock Exam", sublabel: "80 questions, 9 hours", gradient: "from-blue-500 to-cyan-500", shadow: "shadow-blue-500/15" },
+              { href: "/tutor", icon: MessageSquare, label: "AI Tutor", sublabel: "Ask anything", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/15" },
+            ].map(({ href, icon: Icon, label, sublabel, gradient, shadow }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-3 rounded-xl border p-3 hover-lift group"
+              >
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${gradient} shadow-md ${shadow}`}>
+                  <Icon className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="text-[11px] text-muted-foreground">{sublabel}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+              </Link>
+            ))}
             {(dueCount ?? 0) > 0 && (
               <Link
                 href="/review"
-                className="flex items-center gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent p-3 transition-all hover:shadow-md hover:border-orange-500/30 group"
+                className="flex items-center gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent p-3 hover-lift group"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm ring-1 ring-orange-500/10">
-                  <RotateCcw className="h-4 w-4 text-orange-500" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 shadow-md shadow-orange-500/15">
+                  <RotateCcw className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Review Due</p>
+                  <p className="text-sm font-semibold">Review Due</p>
                   <p className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">{dueCount} questions waiting</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all" />
@@ -549,17 +534,21 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-2 gap-2">
               <Link
                 href="/drills/which-code"
-                className="rounded-lg border p-3 text-center transition-all hover:bg-primary/5 hover:border-primary/30"
+                className="rounded-xl border p-3.5 text-center hover-lift group"
               >
-                <Zap className="h-4 w-4 mx-auto mb-1 text-amber-500" />
-                <p className="text-xs font-medium">Which Code?</p>
+                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-amber-500/15">
+                  <Zap className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-xs font-semibold">Which Code?</p>
               </Link>
               <Link
                 href="/drills/code-nav"
-                className="rounded-lg border p-3 text-center transition-all hover:bg-primary/5 hover:border-primary/30"
+                className="rounded-xl border p-3.5 text-center hover-lift group"
               >
-                <TrendingUp className="h-4 w-4 mx-auto mb-1 text-emerald-500" />
-                <p className="text-xs font-medium">Code Nav</p>
+                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-md shadow-emerald-500/15">
+                  <TrendingUp className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-xs font-semibold">Code Nav</p>
               </Link>
             </div>
           </div>

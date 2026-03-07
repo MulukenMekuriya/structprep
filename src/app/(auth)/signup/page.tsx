@@ -7,14 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Loader2, CheckCircle2 } from "lucide-react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -24,6 +17,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  const passwordStrength = password.length >= 8 ? "strong" : password.length >= 6 ? "medium" : "weak";
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -49,67 +44,116 @@ export default function SignupPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>
+    <div className="glass rounded-2xl ring-1 ring-border/50 shadow-xl shadow-primary/5 p-8">
+      <div className="space-y-2 mb-6">
+        <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
+        <p className="text-sm text-muted-foreground">
           Start preparing for the PE Structures exam
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSignup}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+        </p>
+      </div>
+
+      <form onSubmit={handleSignup} className="space-y-5">
+        {error && (
+          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-sm text-destructive flex items-start gap-2">
+            <svg className="h-4 w-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+          <Input
+            id="fullName"
+            type="text"
+            placeholder="Mulu Mekuriya"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="h-11 rounded-xl bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-xl bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="Min 6 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 rounded-xl bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            minLength={6}
+            required
+          />
+          {password.length > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <div className="flex gap-1 flex-1">
+                <div className={`h-1 flex-1 rounded-full transition-colors ${
+                  passwordStrength === "weak" ? "bg-red-400" : "bg-green-400"
+                }`} />
+                <div className={`h-1 flex-1 rounded-full transition-colors ${
+                  passwordStrength === "medium" ? "bg-yellow-400" : passwordStrength === "strong" ? "bg-green-400" : "bg-muted"
+                }`} />
+                <div className={`h-1 flex-1 rounded-full transition-colors ${
+                  passwordStrength === "strong" ? "bg-green-400" : "bg-muted"
+                }`} />
+              </div>
+              {passwordStrength === "strong" && (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+              )}
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="Mulu Mekuriya"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-11 rounded-xl text-sm font-semibold glow-primary"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Creating account...
+            </>
+          ) : (
+            "Create account"
+          )}
+        </Button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border/50" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-background/50 px-3 text-muted-foreground">Already registered?</span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Min 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
-              required
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary underline">
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          <Link
+            href="/login"
+            className="font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Sign in
+          </Link>
+          {" "}to your account
+        </p>
       </form>
-    </Card>
+    </div>
   );
 }

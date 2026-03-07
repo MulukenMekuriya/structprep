@@ -7,14 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -45,52 +38,86 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>Sign in to continue studying</CardDescription>
-      </CardHeader>
-      <form onSubmit={handleLogin}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+    <div className="glass rounded-2xl ring-1 ring-border/50 shadow-xl shadow-primary/5 p-8">
+      <div className="space-y-2 mb-6">
+        <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+        <p className="text-sm text-muted-foreground">
+          Sign in to continue your exam prep
+        </p>
+      </div>
+
+      <form onSubmit={handleLogin} className="space-y-5">
+        {error && (
+          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-sm text-destructive flex items-start gap-2">
+            <svg className="h-4 w-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-xl bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+          </div>
+          <Input
+            id="password"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 rounded-xl bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            required
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-11 rounded-xl text-sm font-semibold glow-primary"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Signing in...
+            </>
+          ) : (
+            "Sign in"
           )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        </Button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border/50" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-background/50 px-3 text-muted-foreground">New here?</span>
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-primary underline">
-              Sign up
-            </Link>
-          </p>
-        </CardFooter>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          <Link
+            href="/signup"
+            className="font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Create an account
+          </Link>
+          {" "}to start preparing
+        </p>
       </form>
-    </Card>
+    </div>
   );
 }

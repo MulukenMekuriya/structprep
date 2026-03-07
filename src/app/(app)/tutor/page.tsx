@@ -58,39 +58,44 @@ const STUDY_MODES: {
   description: string;
   icon: React.ReactNode;
   gradient: string;
-  accent: string;
+  iconGradient: string;
+  shadow: string;
 }[] = [
   {
     id: "teach",
     label: "Teach Me",
     description: "Deep-dive into a topic with code references, worked examples, and exam tips",
-    icon: <GraduationCap className="h-6 w-6" />,
-    gradient: "from-blue-500/10 to-indigo-500/10",
-    accent: "text-blue-600 dark:text-blue-400",
+    icon: <GraduationCap className="h-6 w-6 text-white" />,
+    gradient: "from-blue-500/8 to-indigo-500/5",
+    iconGradient: "from-blue-500 to-indigo-600",
+    shadow: "shadow-blue-500/15",
   },
   {
     id: "quiz",
     label: "Quiz Me",
     description: "PE-exam-style calculation problems graded in real time",
-    icon: <Brain className="h-6 w-6" />,
-    gradient: "from-emerald-500/10 to-teal-500/10",
-    accent: "text-emerald-600 dark:text-emerald-400",
+    icon: <Brain className="h-6 w-6 text-white" />,
+    gradient: "from-emerald-500/8 to-teal-500/5",
+    iconGradient: "from-emerald-500 to-teal-600",
+    shadow: "shadow-emerald-500/15",
   },
   {
     id: "review",
     label: "Review Mistakes",
     description: "Walk through your errors and lock in the correct approach",
-    icon: <AlertCircle className="h-6 w-6" />,
-    gradient: "from-amber-500/10 to-orange-500/10",
-    accent: "text-amber-600 dark:text-amber-400",
+    icon: <AlertCircle className="h-6 w-6 text-white" />,
+    gradient: "from-amber-500/8 to-orange-500/5",
+    iconGradient: "from-amber-500 to-orange-500",
+    shadow: "shadow-amber-500/15",
   },
   {
     id: "chat",
     label: "Free Chat",
     description: "Ask any structural engineering question — no limits",
-    icon: <MessageSquare className="h-6 w-6" />,
-    gradient: "from-violet-500/10 to-purple-500/10",
-    accent: "text-violet-600 dark:text-violet-400",
+    icon: <MessageSquare className="h-6 w-6 text-white" />,
+    gradient: "from-violet-500/8 to-purple-500/5",
+    iconGradient: "from-violet-500 to-purple-600",
+    shadow: "shadow-violet-500/15",
   },
 ];
 
@@ -356,8 +361,8 @@ export default function TutorPage() {
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10">
-                  <Bot className="h-6 w-6 text-primary" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/15">
+                  <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">AI Tutor</h1>
@@ -417,24 +422,30 @@ export default function TutorPage() {
         {/* Stats bar */}
         {!ctxLoading && studentCtx && studentCtx.totalAttempted > 0 && (
           <div className="grid grid-cols-3 gap-3 mb-8">
-            <div className="rounded-xl border bg-gradient-to-br from-orange-500/5 to-transparent p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Flame className="h-4 w-4 text-orange-500" />
+            <div className="rounded-xl border bg-card p-4 hover-lift">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 shadow-md shadow-orange-500/15">
+                  <Flame className="h-3.5 w-3.5 text-white" />
+                </div>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Streak</span>
               </div>
               <p className="text-2xl font-bold">{studentCtx.studyStreak}<span className="text-sm font-normal text-muted-foreground ml-1">days</span></p>
             </div>
-            <div className="rounded-xl border bg-gradient-to-br from-emerald-500/5 to-transparent p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Target className="h-4 w-4 text-emerald-500" />
+            <div className="rounded-xl border bg-card p-4 hover-lift">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/15">
+                  <Target className="h-3.5 w-3.5 text-white" />
+                </div>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Accuracy</span>
               </div>
               <p className="text-2xl font-bold">{studentCtx.overallAccuracy}%<span className="text-sm font-normal text-muted-foreground ml-1">({studentCtx.totalAttempted} Qs)</span></p>
             </div>
             {studentCtx.weakTopics.length > 0 ? (
-              <div className="rounded-xl border bg-gradient-to-br from-amber-500/5 to-transparent p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
+              <div className="rounded-xl border bg-card p-4 hover-lift">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/15">
+                    <AlertCircle className="h-3.5 w-3.5 text-white" />
+                  </div>
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Focus</span>
                 </div>
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 leading-tight">
@@ -442,9 +453,11 @@ export default function TutorPage() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-xl border bg-gradient-to-br from-blue-500/5 to-transparent p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <BookOpen className="h-4 w-4 text-blue-500" />
+              <div className="rounded-xl border bg-card p-4 hover-lift">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-md shadow-blue-500/15">
+                    <BookOpen className="h-3.5 w-3.5 text-white" />
+                  </div>
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
                 </div>
                 <p className="text-sm font-semibold leading-tight">On track</p>
@@ -460,11 +473,11 @@ export default function TutorPage() {
             {STUDY_MODES.map((mode) => (
               <button
                 key={mode.id}
-                className={`group relative text-left rounded-xl border p-5 bg-gradient-to-br ${mode.gradient} hover:shadow-md hover:border-primary/20 transition-all duration-200`}
+                className={`group relative text-left rounded-xl border p-5 bg-gradient-to-br ${mode.gradient} hover-lift hover:border-primary/20 transition-all duration-200`}
                 onClick={() => startNewSession(mode.id)}
               >
                 <div className="flex items-start gap-4">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background shadow-sm ring-1 ring-border ${mode.accent} group-hover:shadow-md transition-shadow`}>
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${mode.iconGradient} shadow-md ${mode.shadow} group-hover:shadow-lg transition-shadow`}>
                     {mode.icon}
                   </div>
                   <div className="min-w-0">
@@ -538,7 +551,7 @@ export default function TutorPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${currentMode.gradient} ring-1 ring-border ${currentMode.accent}`}>
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${currentMode.iconGradient} shadow-md ${currentMode.shadow}`}>
               {currentMode.icon}
             </div>
             <div>

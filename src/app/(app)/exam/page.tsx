@@ -27,8 +27,7 @@ export default function ExamPage() {
     <div className="space-y-6 max-w-2xl mx-auto">
       <PageHeader
         icon={<Clock className="h-6 w-6" />}
-        iconGradient="from-red-500/10 to-orange-500/10"
-        iconAccent="text-red-600 dark:text-red-400"
+        iconGradient="from-red-500 to-orange-500"
         title="Mock Exam"
         description="Simulate the full PE Civil: Structures exam experience"
       />
@@ -36,38 +35,23 @@ export default function ExamPage() {
       <SectionHeader title="Exam details" />
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border bg-gradient-to-br from-blue-500/5 to-transparent p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Questions</span>
+        {[
+          { icon: FileText, iconColor: "from-blue-500 to-indigo-500", shadow: "shadow-blue-500/15", label: "Questions", value: "80", sublabel: "multiple choice" },
+          { icon: Timer, iconColor: "from-orange-500 to-red-500", shadow: "shadow-orange-500/15", label: "Time Limit", value: "9 hrs", sublabel: "continuous" },
+          { icon: BarChart3, iconColor: "from-violet-500 to-purple-500", shadow: "shadow-violet-500/15", label: "Distribution", value: "NCEES", sublabel: "weighted topics" },
+          { icon: Gauge, iconColor: "from-emerald-500 to-teal-500", shadow: "shadow-emerald-500/15", label: "Difficulty", value: "Mixed", sublabel: "easy to hard" },
+        ].map(({ icon: Icon, iconColor, shadow, label, value, sublabel }) => (
+          <div key={label} className="rounded-xl border bg-card p-4 hover-lift">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${iconColor} shadow-md ${shadow}`}>
+                <Icon className="h-3.5 w-3.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+            </div>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-xs text-muted-foreground">{sublabel}</p>
           </div>
-          <p className="text-2xl font-bold">80</p>
-          <p className="text-xs text-muted-foreground">multiple choice</p>
-        </div>
-        <div className="rounded-xl border bg-gradient-to-br from-orange-500/5 to-transparent p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Timer className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Limit</span>
-          </div>
-          <p className="text-2xl font-bold">9 hrs</p>
-          <p className="text-xs text-muted-foreground">continuous</p>
-        </div>
-        <div className="rounded-xl border bg-gradient-to-br from-violet-500/5 to-transparent p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Distribution</span>
-          </div>
-          <p className="text-2xl font-bold">NCEES</p>
-          <p className="text-xs text-muted-foreground">weighted topics</p>
-        </div>
-        <div className="rounded-xl border bg-gradient-to-br from-emerald-500/5 to-transparent p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Gauge className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Difficulty</span>
-          </div>
-          <p className="text-2xl font-bold">Mixed</p>
-          <p className="text-xs text-muted-foreground">easy to hard</p>
-        </div>
+        ))}
       </div>
 
       <SectionHeader title="Topic distribution" />
@@ -88,10 +72,11 @@ export default function ExamPage() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 shrink-0">
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-4">
+        <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-amber-500/10 blur-2xl" />
+        <div className="relative flex items-start gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/15 shrink-0">
+            <AlertTriangle className="h-4 w-4 text-white" />
           </div>
           <div>
             <p className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-0.5">Timed Exam</p>
@@ -104,7 +89,7 @@ export default function ExamPage() {
         </div>
       </div>
 
-      <Button size="lg" className="w-full" onClick={startExam}>
+      <Button size="lg" className="w-full h-12 rounded-xl text-base font-semibold glow-primary" onClick={startExam}>
         Start Mock Exam
       </Button>
     </div>

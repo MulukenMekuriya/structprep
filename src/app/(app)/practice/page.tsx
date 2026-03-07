@@ -86,8 +86,7 @@ export default function PracticePage() {
       {/* Header */}
       <PageHeader
         icon={<BookOpen className="h-6 w-6" />}
-        iconGradient="from-blue-500/10 to-indigo-500/10"
-        iconAccent="text-blue-600 dark:text-blue-400"
+        iconGradient="from-blue-500 to-indigo-600"
         title="Practice"
         description="Build your skills with targeted question sets"
       />
@@ -97,20 +96,20 @@ export default function PracticePage() {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {/* All Topics Card */}
         <Card
-          className={`cursor-pointer rounded-xl border transition-all hover:shadow-md hover:border-primary/20 ${
+          className={`cursor-pointer rounded-xl border transition-all hover-lift ${
             selection.type === "all"
-              ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20"
-              : "bg-gradient-to-br from-muted/30 to-transparent"
+              ? "border-primary/40 bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20 shadow-md shadow-primary/5"
+              : "bg-gradient-to-br from-muted/30 to-transparent hover:border-primary/20"
           }`}
           onClick={() => setSelection({ type: "all" })}
         >
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Shuffle className="h-5 w-5 text-primary" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-500/15">
+                <Shuffle className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="font-semibold">All Topics</p>
+                <p className="font-bold">All Topics</p>
                 <p className="text-xs text-muted-foreground">
                   Adaptive mix · NCEES weighted
                 </p>
@@ -129,10 +128,10 @@ export default function PracticePage() {
           return (
             <Card
               key={topic}
-              className={`cursor-pointer rounded-xl border transition-all hover:shadow-md hover:border-primary/20 ${
+              className={`cursor-pointer rounded-xl border transition-all hover-lift ${
                 expanded
-                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20"
-                  : "bg-gradient-to-br from-muted/30 to-transparent"
+                  ? "border-primary/40 bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20 shadow-md shadow-primary/5"
+                  : "bg-gradient-to-br from-muted/30 to-transparent hover:border-primary/20"
               }`}
               onClick={() => handleTopicClick(topic)}
             >
@@ -178,7 +177,7 @@ export default function PracticePage() {
 
       {/* Sticky Bottom Bar */}
       <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-5xl">
-        <div className="rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg px-4 py-3">
+        <div className="rounded-2xl border glass shadow-xl shadow-black/5 dark:shadow-black/20 px-5 py-4">
           <SectionHeader title="Session settings" />
           <div className="flex flex-col sm:flex-row items-center gap-3">
             {/* Config */}
@@ -224,7 +223,7 @@ export default function PracticePage() {
             </div>
 
             {/* Start Button */}
-            <Button size="lg" onClick={startPractice} className="gap-2 shrink-0 w-full sm:w-auto">
+            <Button size="lg" onClick={startPractice} className="gap-2 shrink-0 w-full sm:w-auto rounded-xl glow-primary">
               <Play className="h-4 w-4" />
               {selectionLabel}
               <Badge variant="secondary" className="text-[10px] ml-1">
