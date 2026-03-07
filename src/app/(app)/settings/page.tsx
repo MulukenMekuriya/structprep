@@ -19,7 +19,9 @@ import {
   Clock,
   Flame,
   CheckCircle2,
+  Settings,
 } from "lucide-react";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page-header";
 
 interface Profile {
   full_name: string;
@@ -91,12 +93,16 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your profile and preferences</p>
-      </div>
+      <PageHeader
+        icon={<Settings className="h-6 w-6" />}
+        iconGradient="from-gray-500/10 to-slate-500/10"
+        iconAccent="text-gray-600 dark:text-gray-400"
+        title="Settings"
+        description="Manage your profile and preferences"
+      />
 
       {/* Profile */}
+      <SectionHeader title="Profile" />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -154,30 +160,26 @@ export default function SettingsPage() {
       </Card>
 
       {/* Study Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Study Statistics</CardTitle>
-          <CardDescription>Your overall study progress</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border p-4 text-center">
-              <Flame className="h-6 w-6 mx-auto text-orange-500 mb-1" />
-              <div className="text-2xl font-bold">{profile?.study_streak ?? 0}</div>
-              <p className="text-xs text-muted-foreground">Day Streak</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-              <div className="text-2xl font-bold">
-                {Math.round((profile?.total_study_minutes ?? 0) / 60)}h
-              </div>
-              <p className="text-xs text-muted-foreground">Total Study Time</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SectionHeader title="Statistics" />
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard
+          icon={<Flame className="h-4 w-4" />}
+          iconColor="text-orange-500"
+          label="Day Streak"
+          value={profile?.study_streak ?? 0}
+          gradient="from-orange-500/10 to-amber-500/5"
+        />
+        <StatCard
+          icon={<Clock className="h-4 w-4" />}
+          iconColor="text-blue-500"
+          label="Total Study Time"
+          value={`${Math.round((profile?.total_study_minutes ?? 0) / 60)}h`}
+          gradient="from-blue-500/10 to-cyan-500/5"
+        />
+      </div>
 
       {/* Subscription */}
+      <SectionHeader title="Subscription" />
       <Card>
         <CardHeader>
           <CardTitle>Subscription</CardTitle>

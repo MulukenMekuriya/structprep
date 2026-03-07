@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +14,10 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  HelpCircle,
+  Loader2,
+  Clock,
+  BookOpen,
 } from "lucide-react";
 import { TOPIC_LABELS, type Question } from "@/types";
 import { Markdown } from "@/components/ui/markdown";
@@ -50,10 +52,37 @@ export function QuestionCard({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [startTime] = useState(Date.now());
+  const [elapsed, setElapsed] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [flagged, setFlagged] = useState(false);
+  const [whyWrong, setWhyWrong] = useState<{
+    category: string;
+    label: string;
+    explanation: string;
+    tip: string;
+  } | null>(null);
+  const [whyWrongLoading, setWhyWrongLoading] = useState(false);
+  const solutionRef = useRef<HTMLDivElement>(null);
 
   const isCorrect = selectedOption === question.correct_option_id;
+
+  // Live timer
+  useEffect(() => {
+    if (submitted) return;
+    const interval = setInterval(() => {
+      setElapsed(Math.round((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [submitted, startTime]);
+
+  // Scroll to solution on submit
+  useEffect(() => {
+    if (submitted && solutionRef.current) {
+      setTimeout(() => {
+        solutionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
+  }, [submitted]);
 
   function handleSubmit() {
     if (!selectedOption) return;
@@ -73,120 +102,168 @@ export function QuestionCard({
     onFlag?.();
   }
 
+  async function handleWhyWrong() {
+    if (whyWrong || whyWrongLoading || !selectedOption) return;
+    setWhyWrongLoading(true);
+    try {
+      const res = await fetch(`/api/questions/${question.id}/why-wrong`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selected_option_id: selectedOption }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setWhyWrong(data);
+    } catch {
+      setWhyWrong({
+        category: "other",
+        label: "Analysis unavailable",
+        explanation: "Could not classify the mistake.",
+        tip: "Compare your approach with the solution step-by-step.",
+      });
+    } finally {
+      setWhyWrongLoading(false);
+    }
+  }
+
+  const difficultyColor = question.difficulty === "hard"
+    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+    : question.difficulty === "medium"
+      ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20"
+      : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
   return (
-    <Card className="max-w-3xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {questionNumber && totalQuestions && (
-              <span className="text-sm text-muted-foreground">
-                Question {questionNumber} of {totalQuestions}
-              </span>
-            )}
-            <Badge variant="outline">{TOPIC_LABELS[question.topic]}</Badge>
-            <Badge
-              variant={
-                question.difficulty === "hard"
-                  ? "destructive"
-                  : question.difficulty === "medium"
-                    ? "default"
-                    : "secondary"
-              }
-            >
-              {question.difficulty}
-            </Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleFlag}
-            className={flagged ? "text-orange-500" : ""}
-          >
-            <Flag className="h-4 w-4 mr-1" />
-            {flagged ? "Flagged" : "Flag"}
-          </Button>
+    <Card className="max-w-3xl mx-auto overflow-hidden">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[11px] font-normal">
+            {TOPIC_LABELS[question.topic]}
+          </Badge>
+          <Badge variant="outline" className={`text-[11px] font-normal ${difficultyColor}`}>
+            {question.difficulty}
+          </Badge>
         </div>
-        <div className="mt-2 text-lg leading-relaxed font-semibold">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {formatTime(submitted ? Math.round((Date.now() - startTime) / 1000) : elapsed)}
+          </span>
+          <button
+            onClick={handleFlag}
+            className={`p-1.5 rounded-md transition-colors ${
+              flagged
+                ? "text-orange-500 bg-orange-500/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            <Flag className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Question */}
+      <div className="px-5 pt-5 pb-3">
+        <div className="text-base leading-relaxed font-medium">
           <Markdown>{question.question_text}</Markdown>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2 px-5">
+        {/* Options */}
         {question.options.map((option) => {
-          let optionStyle = "border hover:border-primary/50 cursor-pointer";
+          const isSelected = option.id === selectedOption;
+          const isCorrectOption = option.id === question.correct_option_id;
+          const isWrongSelection = isSelected && !isCorrectOption;
+
+          let optionClasses = "border transition-all cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02]";
+          let letterClasses = "border bg-background";
 
           if (submitted) {
-            if (option.id === question.correct_option_id) {
-              optionStyle =
-                "border-green-500 bg-green-50 dark:bg-green-950/30";
-            } else if (
-              option.id === selectedOption &&
-              option.id !== question.correct_option_id
-            ) {
-              optionStyle = "border-red-500 bg-red-50 dark:bg-red-950/30";
+            if (isCorrectOption) {
+              optionClasses = "border-green-500 bg-green-500/5";
+              letterClasses = "border-green-500 bg-green-500 text-white";
+            } else if (isWrongSelection) {
+              optionClasses = "border-red-500 bg-red-500/5";
+              letterClasses = "border-red-500 bg-red-500 text-white";
             } else {
-              optionStyle = "border opacity-50";
+              optionClasses = "border-transparent opacity-40";
+              letterClasses = "border-muted bg-muted";
             }
-          } else if (option.id === selectedOption) {
-            optionStyle = "border-primary bg-primary/5";
+          } else if (isSelected) {
+            optionClasses = "border-primary bg-primary/5 ring-1 ring-primary/20";
+            letterClasses = "border-primary bg-primary text-primary-foreground";
           }
 
           return (
             <div
               key={option.id}
-              className={`flex items-center gap-3 rounded-lg p-4 transition-colors ${optionStyle}`}
+              className={`flex items-start gap-3 rounded-xl p-3.5 ${optionClasses}`}
               onClick={() => !submitted && setSelectedOption(option.id)}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-semibold text-sm">
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${letterClasses}`}>
                 {option.id}
               </div>
-              <div className="text-sm flex-1"><Markdown>{option.text}</Markdown></div>
-              {submitted && option.id === question.correct_option_id && (
-                <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+              <div className="text-sm flex-1 pt-0.5">
+                <Markdown>{option.text}</Markdown>
+              </div>
+              {submitted && isCorrectOption && (
+                <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
               )}
-              {submitted &&
-                option.id === selectedOption &&
-                option.id !== question.correct_option_id && (
-                  <XCircle className="h-5 w-5 text-red-500 shrink-0" />
-                )}
+              {submitted && isWrongSelection && (
+                <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              )}
             </div>
           );
         })}
 
         {/* Hint Panel */}
         {!submitted && (hintText || hintLoading) && (
-          <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-50/50 dark:bg-yellow-950/20 p-4">
-            <h3 className="font-semibold text-sm flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
-              <Lightbulb className="h-4 w-4" />
-              Hint (Level {hintsUsed})
+          <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <h3 className="font-semibold text-xs flex items-center gap-1.5 text-amber-600 dark:text-amber-400 mb-2 uppercase tracking-wide">
+              <Lightbulb className="h-3.5 w-3.5" />
+              Hint · Level {hintsUsed}
             </h3>
             {hintLoading ? (
-              <p className="text-sm text-muted-foreground">Generating hint...</p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Generating hint...
+              </div>
             ) : (
-              <Markdown>{hintText || ""}</Markdown>
+              <div className="text-sm"><Markdown>{hintText || ""}</Markdown></div>
             )}
           </div>
         )}
 
         {/* Solution Panel */}
-        {submitted && (showSolution || true) && (
-          <div className="mt-4 rounded-lg border bg-muted/50 p-4 space-y-3">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
+        {submitted && (
+          <div ref={solutionRef} className="mt-3 rounded-xl border bg-muted/30 p-5 space-y-3">
+            <div className="flex items-center gap-2">
               {isCorrect ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-bold text-sm">Correct!</span>
+                </div>
               ) : (
-                <XCircle className="h-4 w-4 text-red-500" />
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                  <XCircle className="h-5 w-5" />
+                  <span className="font-bold text-sm">Incorrect</span>
+                </div>
               )}
-              {isCorrect ? "Correct!" : "Incorrect"}
-            </h3>
-            <Markdown>{question.solution_text}</Markdown>
+            </div>
+            <div className="text-sm leading-relaxed">
+              <Markdown>{question.solution_text}</Markdown>
+            </div>
             {question.code_references.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <BookOpen className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
                 {question.code_references.map((ref) => (
                   <Badge
                     key={ref}
                     variant="outline"
-                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                    className="text-[10px] cursor-pointer hover:bg-primary/10 transition-colors"
                     onClick={() =>
                       window.open(
                         `/references?q=${encodeURIComponent(ref)}`,
@@ -201,32 +278,66 @@ export function QuestionCard({
             )}
           </div>
         )}
+
+        {/* Why Wrong? Panel */}
+        {submitted && !isCorrect && whyWrong && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 space-y-2">
+            <h3 className="font-semibold text-xs flex items-center gap-1.5 text-red-600 dark:text-red-400 uppercase tracking-wide">
+              <HelpCircle className="h-3.5 w-3.5" />
+              {whyWrong.label}
+            </h3>
+            <p className="text-sm">{whyWrong.explanation}</p>
+            <Badge variant="outline" className="text-[10px] border-red-500/20 text-red-600 dark:text-red-400">
+              {whyWrong.category.replace(/_/g, " ")}
+            </Badge>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Tip:</span> {whyWrong.tip}
+            </p>
+          </div>
+        )}
       </CardContent>
 
-      <CardFooter className="flex justify-between">
+      {/* Footer Actions */}
+      <CardFooter className="flex justify-between px-5 py-3 border-t bg-muted/20">
         <div className="flex gap-2">
           {!submitted && (
-            <Button variant="outline" size="sm" onClick={handleHint}>
-              <Lightbulb className="h-4 w-4 mr-1" />
-              Hint ({hintsUsed}/3)
+            <Button variant="ghost" size="sm" onClick={handleHint} className="text-xs h-8 gap-1.5">
+              <Lightbulb className="h-3.5 w-3.5" />
+              Hint {hintsUsed > 0 && `(${hintsUsed}/3)`}
+            </Button>
+          )}
+          {submitted && !isCorrect && !whyWrong && (
+            <Button variant="ghost" size="sm" onClick={handleWhyWrong} disabled={whyWrongLoading} className="text-xs h-8 gap-1.5">
+              {whyWrongLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <HelpCircle className="h-3.5 w-3.5" />
+              )}
+              Why Wrong?
             </Button>
           )}
           {submitted && onExplain && (
-            <Button variant="outline" size="sm" onClick={onExplain}>
-              AI Explanation
+            <Button variant="ghost" size="sm" onClick={onExplain} className="text-xs h-8 gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Full Explanation
             </Button>
           )}
         </div>
         <div>
           {!submitted ? (
-            <Button onClick={handleSubmit} disabled={!selectedOption}>
-              Submit Answer
+            <Button
+              onClick={handleSubmit}
+              disabled={!selectedOption}
+              size="sm"
+              className="h-8 gap-1.5"
+            >
+              Submit
             </Button>
           ) : (
             onNext && (
-              <Button onClick={onNext}>
-                Next Question
-                <ChevronRight className="h-4 w-4 ml-1" />
+              <Button onClick={onNext} size="sm" className="h-8 gap-1">
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             )
           )}

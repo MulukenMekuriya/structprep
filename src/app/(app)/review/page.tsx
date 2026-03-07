@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { TOPIC_LABELS, type NCEESTopic, type Question } from "@/types";
 import { Markdown } from "@/components/ui/markdown";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 interface ReviewData {
   due: (Question & {
@@ -463,16 +464,17 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Spaced Repetition Review</h1>
-        <p className="text-muted-foreground">
-          Questions scheduled for optimal review timing using the SM-2
-          algorithm.
-        </p>
-      </div>
+      <PageHeader
+        icon={<RotateCcw className="h-6 w-6" />}
+        iconGradient="from-amber-500/10 to-orange-500/10"
+        iconAccent="text-amber-600 dark:text-amber-400"
+        title="Spaced Repetition Review"
+        description="Lock in knowledge with scientifically-timed review sessions"
+      />
 
       {/* Daily Target */}
-      <Card>
+      <SectionHeader title="Today's Queue" />
+      <Card className="rounded-xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/10">
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -579,7 +581,8 @@ export default function ReviewPage() {
       </div>
 
       {/* How SR Works */}
-      <Card>
+      <SectionHeader title="How It Works" />
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle className="text-sm">How Spaced Repetition Works</CardTitle>
         </CardHeader>

@@ -1,16 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+// Card components removed — using custom gradient cards instead
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, AlertTriangle } from "lucide-react";
+import { Clock, AlertTriangle, FileText, Timer, BarChart3, Gauge } from "lucide-react";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 import { TOPIC_SHORT_LABELS, TOPIC_WEIGHTS, NCEES_TOPICS } from "@/types";
 
 export default function ExamPage() {
@@ -30,74 +25,88 @@ export default function ExamPage() {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold">Mock Exam</h1>
-        <p className="text-muted-foreground">
-          Simulate the actual PE Civil: Structures CBT exam experience.
-        </p>
+      <PageHeader
+        icon={<Clock className="h-6 w-6" />}
+        iconGradient="from-red-500/10 to-orange-500/10"
+        iconAccent="text-red-600 dark:text-red-400"
+        title="Mock Exam"
+        description="Simulate the full PE Civil: Structures exam experience"
+      />
+
+      <SectionHeader title="Exam details" />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border bg-gradient-to-br from-blue-500/5 to-transparent p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Questions</span>
+          </div>
+          <p className="text-2xl font-bold">80</p>
+          <p className="text-xs text-muted-foreground">multiple choice</p>
+        </div>
+        <div className="rounded-xl border bg-gradient-to-br from-orange-500/5 to-transparent p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Timer className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Limit</span>
+          </div>
+          <p className="text-2xl font-bold">9 hrs</p>
+          <p className="text-xs text-muted-foreground">continuous</p>
+        </div>
+        <div className="rounded-xl border bg-gradient-to-br from-violet-500/5 to-transparent p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <BarChart3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Distribution</span>
+          </div>
+          <p className="text-2xl font-bold">NCEES</p>
+          <p className="text-xs text-muted-foreground">weighted topics</p>
+        </div>
+        <div className="rounded-xl border bg-gradient-to-br from-emerald-500/5 to-transparent p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Gauge className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Difficulty</span>
+          </div>
+          <p className="text-2xl font-bold">Mixed</p>
+          <p className="text-xs text-muted-foreground">easy to hard</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            PE Civil: Structures Mock Exam
-          </CardTitle>
-          <CardDescription>
-            Matches the NCEES exam format and topic distribution
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Questions</p>
-              <p className="font-semibold">80 multiple choice</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Time Limit</p>
-              <p className="font-semibold">9 hours</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Topic Distribution</p>
-              <p className="font-semibold">NCEES-weighted</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Difficulty</p>
-              <p className="font-semibold">Mixed (Easy-Hard)</p>
-            </div>
-          </div>
+      <SectionHeader title="Topic distribution" />
 
-          <div className="space-y-2 border-t pt-4">
-            <p className="text-sm font-medium">Topic Distribution</p>
-            {NCEES_TOPICS.map((topic) => (
-              <div
-                key={topic}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="text-muted-foreground">
-                  {TOPIC_SHORT_LABELS[topic]}
-                </span>
-                <Badge variant="outline">
-                  ~{Math.round(TOPIC_WEIGHTS[topic] * 80)} questions
-                </Badge>
-              </div>
-            ))}
+      <div className="rounded-xl border bg-gradient-to-br from-muted/30 to-transparent p-4 space-y-2.5">
+        {NCEES_TOPICS.map((topic) => (
+          <div
+            key={topic}
+            className="flex items-center justify-between text-sm"
+          >
+            <span className="text-muted-foreground">
+              {TOPIC_SHORT_LABELS[topic]}
+            </span>
+            <Badge variant="outline" className="rounded-lg">
+              ~{Math.round(TOPIC_WEIGHTS[topic] * 80)} questions
+            </Badge>
           </div>
+        ))}
+      </div>
 
-          <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <p className="text-sm">
-              This is a timed exam. Once started, the timer runs continuously.
+      <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 shrink-0">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-0.5">Timed Exam</p>
+            <p className="text-sm text-amber-800/80 dark:text-amber-200/80">
+              Once started, the timer runs continuously.
               You can flag questions and navigate freely. No hints or solutions
               until you submit.
             </p>
           </div>
+        </div>
+      </div>
 
-          <Button size="lg" className="w-full" onClick={startExam}>
-            Start Mock Exam
-          </Button>
-        </CardContent>
-      </Card>
+      <Button size="lg" className="w-full" onClick={startExam}>
+        Start Mock Exam
+      </Button>
     </div>
   );
 }

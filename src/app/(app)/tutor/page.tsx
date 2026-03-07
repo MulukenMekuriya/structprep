@@ -52,11 +52,46 @@ interface StudentContext {
   weakSubtopics: { name: string; accuracy: number }[];
 }
 
-const STUDY_MODES: { id: StudyMode; label: string; description: string; icon: React.ReactNode }[] = [
-  { id: "teach", label: "Teach Me", description: "Learn a topic with examples", icon: <GraduationCap className="h-5 w-5" /> },
-  { id: "quiz", label: "Quiz Me", description: "Practice calculation problems", icon: <Brain className="h-5 w-5" /> },
-  { id: "review", label: "Review Mistakes", description: "Understand past errors", icon: <AlertCircle className="h-5 w-5" /> },
-  { id: "chat", label: "Free Chat", description: "Ask anything", icon: <MessageSquare className="h-5 w-5" /> },
+const STUDY_MODES: {
+  id: StudyMode;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  gradient: string;
+  accent: string;
+}[] = [
+  {
+    id: "teach",
+    label: "Teach Me",
+    description: "Deep-dive into a topic with code references, worked examples, and exam tips",
+    icon: <GraduationCap className="h-6 w-6" />,
+    gradient: "from-blue-500/10 to-indigo-500/10",
+    accent: "text-blue-600 dark:text-blue-400",
+  },
+  {
+    id: "quiz",
+    label: "Quiz Me",
+    description: "PE-exam-style calculation problems graded in real time",
+    icon: <Brain className="h-6 w-6" />,
+    gradient: "from-emerald-500/10 to-teal-500/10",
+    accent: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    id: "review",
+    label: "Review Mistakes",
+    description: "Walk through your errors and lock in the correct approach",
+    icon: <AlertCircle className="h-6 w-6" />,
+    gradient: "from-amber-500/10 to-orange-500/10",
+    accent: "text-amber-600 dark:text-amber-400",
+  },
+  {
+    id: "chat",
+    label: "Free Chat",
+    description: "Ask any structural engineering question — no limits",
+    icon: <MessageSquare className="h-6 w-6" />,
+    gradient: "from-violet-500/10 to-purple-500/10",
+    accent: "text-violet-600 dark:text-violet-400",
+  },
 ];
 
 export default function TutorPage() {
@@ -311,49 +346,61 @@ export default function TutorPage() {
   // No mode selected: show landing screen
   if (!studyMode) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">AI Tutor</h1>
-            <p className="text-muted-foreground">
-              Your personal PE Structures exam coach
+      <div className="flex h-full flex-col overflow-y-auto">
+        {/* Hero section */}
+        <div className="relative mb-8">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10">
+                  <Bot className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">AI Tutor</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Your personal PE Structures exam coach
+                  </p>
+                </div>
+              </div>
               {studentCtx?.daysUntilExam !== null && studentCtx?.daysUntilExam !== undefined && (
-                <span className="font-medium text-foreground">
-                  {" "}&mdash; {studentCtx.daysUntilExam} days until exam
-                </span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-3 py-1 text-xs font-medium ring-1 ring-primary/10">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  {studentCtx.daysUntilExam} days until exam
+                </div>
               )}
-            </p>
+            </div>
+            {pastSessions.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <History className="h-4 w-4 mr-1.5" />
+                History
+              </Button>
+            )}
           </div>
-          {pastSessions.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-            >
-              <History className="h-4 w-4 mr-1" />
-              History
-            </Button>
-          )}
         </div>
 
         {/* History panel */}
         {showHistory && (
-          <Card className="mb-6 p-4 max-h-64 overflow-y-auto">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="mb-6 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3">
               <p className="text-sm font-medium">Recent Conversations</p>
-              <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
-                <X className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(false)}>
+                <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <div className="space-y-2">
+            <div className="max-h-56 overflow-y-auto divide-y">
               {pastSessions.map((s) => (
                 <button
                   key={s.id}
-                  className="w-full text-left rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                  className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors"
                   onClick={() => resumeSession(s)}
                 >
                   <p className="text-sm font-medium truncate">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {s.message_count} messages &middot;{" "}
                     {new Date(s.updated_at).toLocaleDateString()}
                   </p>
@@ -363,161 +410,188 @@ export default function TutorPage() {
           </Card>
         )}
 
-        {/* Student context bar */}
+        {/* Stats bar */}
         {!ctxLoading && studentCtx && studentCtx.totalAttempted > 0 && (
-          <Card className="mb-6 p-4">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-1.5">
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="rounded-xl border bg-gradient-to-br from-orange-500/5 to-transparent p-4">
+              <div className="flex items-center gap-2 mb-1">
                 <Flame className="h-4 w-4 text-orange-500" />
-                <span className="font-medium">{studentCtx.studyStreak} day streak</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Streak</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Target className="h-4 w-4 text-muted-foreground" />
-                <span>{studentCtx.overallAccuracy}% accuracy</span>
-                <span className="text-muted-foreground">({studentCtx.totalAttempted} Qs)</span>
-              </div>
-              {studentCtx.weakTopics.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  <span className="text-orange-600 dark:text-orange-400">
-                    Focus: {studentCtx.weakTopics.map((w) => w.label).join(", ")}
-                  </span>
-                </div>
-              )}
+              <p className="text-2xl font-bold">{studentCtx.studyStreak}<span className="text-sm font-normal text-muted-foreground ml-1">days</span></p>
             </div>
-          </Card>
+            <div className="rounded-xl border bg-gradient-to-br from-emerald-500/5 to-transparent p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="h-4 w-4 text-emerald-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Accuracy</span>
+              </div>
+              <p className="text-2xl font-bold">{studentCtx.overallAccuracy}%<span className="text-sm font-normal text-muted-foreground ml-1">({studentCtx.totalAttempted} Qs)</span></p>
+            </div>
+            {studentCtx.weakTopics.length > 0 ? (
+              <div className="rounded-xl border bg-gradient-to-br from-amber-500/5 to-transparent p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Focus</span>
+                </div>
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 leading-tight">
+                  {studentCtx.weakTopics.map((w) => w.label).join(", ")}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border bg-gradient-to-br from-blue-500/5 to-transparent p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="h-4 w-4 text-blue-500" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+                </div>
+                <p className="text-sm font-semibold leading-tight">On track</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Study mode cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {STUDY_MODES.map((mode) => (
-            <button
-              key={mode.id}
-              className="text-left rounded-xl border-2 p-6 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-              onClick={() => startNewSession(mode.id)}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                  {mode.icon}
+        {/* Study mode section */}
+        <div className="mb-8">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Choose your study mode</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {STUDY_MODES.map((mode) => (
+              <button
+                key={mode.id}
+                className={`group relative text-left rounded-xl border p-5 bg-gradient-to-br ${mode.gradient} hover:shadow-md hover:border-primary/20 transition-all duration-200`}
+                onClick={() => startNewSession(mode.id)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background shadow-sm ring-1 ring-border ${mode.accent} group-hover:shadow-md transition-shadow`}>
+                    {mode.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-[15px] mb-0.5 group-hover:text-primary transition-colors">{mode.label}</h3>
+                    <p className="text-[13px] text-muted-foreground leading-snug">{mode.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">{mode.label}</h3>
-                  <p className="text-sm text-muted-foreground">{mode.description}</p>
-                </div>
-              </div>
-            </button>
-          ))}
+                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Suggested topics based on weak areas */}
+        {/* Weak areas */}
         {studentCtx && studentCtx.weakTopics.length > 0 && (
-          <div>
-            <p className="text-sm font-medium mb-3">Recommended Focus Areas</p>
+          <div className="mb-6">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recommended focus areas</h2>
             <div className="flex flex-wrap gap-2">
               {studentCtx.weakTopics.map((w) => (
-                <Badge
+                <button
                   key={w.topic}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 py-1.5 px-3 text-sm border-orange-500/50 text-orange-700 dark:text-orange-400"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 transition-colors"
                   onClick={() => {
                     startNewSession("teach");
                     setTimeout(() => pickTopic(w.topic), 50);
                   }}
                 >
-                  {w.label} ({w.accuracy}%)
-                  <ChevronRight className="h-3 w-3 ml-1" />
-                </Badge>
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {w.label}
+                  <span className="text-amber-600/60 dark:text-amber-400/60">{w.accuracy}%</span>
+                  <ChevronRight className="h-3 w-3 ml-0.5" />
+                </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Quick start suggestions */}
-        {(!studentCtx || studentCtx.weakTopics.length === 0) && (
-          <div>
-            <p className="text-sm font-medium mb-3">Quick Start</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                "Teach me LRFD load combinations",
-                "Quiz me on steel beam design",
-                "Explain punching shear",
-                "Walk me through a column design",
-              ].map((suggestion) => (
-                <Badge
-                  key={suggestion}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 py-1.5 px-3 text-sm"
-                  onClick={() => {
-                    startNewSession("chat");
-                    setTimeout(() => sendMessageDirect(suggestion), 100);
-                  }}
-                >
-                  {suggestion}
-                </Badge>
-              ))}
-            </div>
+        {/* Quick start */}
+        <div>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick start</h2>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { text: "Teach me LRFD load combinations", icon: <GraduationCap className="h-3.5 w-3.5" /> },
+              { text: "Quiz me on steel beam design", icon: <Brain className="h-3.5 w-3.5" /> },
+              { text: "Explain punching shear", icon: <MessageSquare className="h-3.5 w-3.5" /> },
+              { text: "Walk me through a column design", icon: <GraduationCap className="h-3.5 w-3.5" /> },
+            ].map((suggestion) => (
+              <button
+                key={suggestion.text}
+                className="inline-flex items-center gap-2 rounded-lg border bg-card px-3.5 py-2 text-sm hover:bg-muted/80 hover:border-primary/20 transition-all"
+                onClick={() => {
+                  startNewSession("chat");
+                  setTimeout(() => sendMessageDirect(suggestion.text), 100);
+                }}
+              >
+                <span className="text-muted-foreground">{suggestion.icon}</span>
+                {suggestion.text}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
     );
   }
 
   // Mode selected but no messages yet: show topic picker (for teach/quiz/review)
   if (studyMode !== "chat" && messages.length === 0 && !selectedTopic) {
+    const currentMode = STUDY_MODES.find((m) => m.id === studyMode)!;
     return (
       <div className="flex h-full flex-col overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">
-              {STUDY_MODES.find((m) => m.id === studyMode)?.label}
-            </h1>
-            <p className="text-muted-foreground">
-              {STUDY_MODES.find((m) => m.id === studyMode)?.description}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${currentMode.gradient} ring-1 ring-border ${currentMode.accent}`}>
+              {currentMode.icon}
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">{currentMode.label}</h1>
+              <p className="text-sm text-muted-foreground">{currentMode.description}</p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={newChat}>
+          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={newChat}>
             <X className="h-4 w-4 mr-1" />
             Back
           </Button>
         </div>
 
-        <p className="text-sm font-medium mb-4">Pick a topic to get started:</p>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Select a topic</h2>
 
-        <div className="space-y-4 overflow-y-auto flex-1 min-h-0">
+        <div className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           {NCEES_TOPICS.map((topic) => {
             const subtopics = TOPIC_SUBTOPICS[topic];
             const isWeak = studentCtx?.weakTopics.some((w) => w.topic === topic);
+            const weakData = studentCtx?.weakTopics.find((w) => w.topic === topic);
 
             return (
-              <Card key={topic} className="p-4">
+              <div key={topic} className="rounded-xl border overflow-hidden">
                 <button
-                  className="w-full text-left flex items-center justify-between mb-2"
+                  className="w-full text-left flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors"
                   onClick={() => pickTopic(topic)}
                 >
-                  <div className="flex items-center gap-2">
-                    {isWeak && <AlertCircle className="h-4 w-4 text-orange-500" />}
-                    <h3 className="font-medium text-sm">
-                      {TOPIC_SHORT_LABELS[topic]}
-                    </h3>
+                  <div className="flex items-center gap-3">
+                    {isWeak && (
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/10">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                      </span>
+                    )}
+                    <span className="font-medium text-sm">{TOPIC_SHORT_LABELS[topic]}</span>
+                    {weakData && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                        {weakData.accuracy}% accuracy
+                      </span>
+                    )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                 </button>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 px-4 pb-3.5 pt-0">
                   {subtopics.map((sub) => (
-                    <Badge
+                    <button
                       key={sub}
-                      variant="outline"
-                      className="cursor-pointer hover:bg-primary/10 text-xs"
+                      className="text-xs rounded-md border bg-card px-2.5 py-1 text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:border-primary/20 transition-all"
                       onClick={() => {
                         setSelectedTopic(topic);
                         pickSubtopic(sub);
                       }}
                     >
                       {sub}
-                    </Badge>
+                    </button>
                   ))}
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
@@ -527,9 +601,9 @@ export default function TutorPage() {
 
   // Active chat session
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex flex-col" style={{ height: "calc(100vh - 6rem)" }}>
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             {STUDY_MODES.find((m) => m.id === studyMode)?.icon || <Bot className="h-4 w-4" />}
@@ -639,7 +713,7 @@ export default function TutorPage() {
       </Card>
 
       {/* Input */}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex gap-2 shrink-0">
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}

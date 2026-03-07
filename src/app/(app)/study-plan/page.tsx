@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Loader2,
   Calendar,
+  CalendarDays,
   Clock,
   Target,
   AlertTriangle,
@@ -25,6 +26,7 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 interface Activity {
   activity: string;
@@ -110,14 +112,16 @@ export default function StudyPlanPage() {
   if (!plan) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">AI Study Plan</h1>
-          <p className="text-muted-foreground">
-            Get a personalized weekly study schedule based on your performance and exam date
-          </p>
-        </div>
+        <PageHeader
+          icon={<CalendarDays className="h-6 w-6" />}
+          iconGradient="from-blue-500/10 to-indigo-500/10"
+          iconAccent="text-blue-600 dark:text-blue-400"
+          title="Study Plan"
+          description="AI-generated study schedule tailored to your goals"
+        />
 
-        <Card className="max-w-lg">
+        <SectionHeader title="Generate Your Plan" />
+        <Card className="max-w-lg rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -172,20 +176,22 @@ export default function StudyPlanPage() {
   // Plan generated
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Your Study Plan</h1>
-          <p className="text-muted-foreground">
-            Personalized for {hoursPerWeek} hours/week
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => setPlan(null)}>
-          Regenerate
-        </Button>
-      </div>
+      <PageHeader
+        icon={<CalendarDays className="h-6 w-6" />}
+        iconGradient="from-blue-500/10 to-indigo-500/10"
+        iconAccent="text-blue-600 dark:text-blue-400"
+        title="Study Plan"
+        description={`Personalized for ${hoursPerWeek} hours/week`}
+        action={
+          <Button variant="outline" onClick={() => setPlan(null)}>
+            Regenerate
+          </Button>
+        }
+      />
 
       {/* Readiness Score */}
-      <Card className={plan.examReadiness.onTrack ? "border-green-500/30" : "border-orange-500/30"}>
+      <SectionHeader title="Exam Readiness" />
+      <Card className={`rounded-xl ${plan.examReadiness.onTrack ? "border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5" : "border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-amber-500/5"}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {plan.examReadiness.onTrack ? (
@@ -216,14 +222,15 @@ export default function StudyPlanPage() {
       </Card>
 
       {/* Summary */}
-      <Card>
+      <Card className="rounded-xl">
         <CardContent className="pt-6">
           <p className="text-sm leading-relaxed">{plan.summary}</p>
         </CardContent>
       </Card>
 
       {/* Weekly Schedule */}
-      <Card>
+      <SectionHeader title="Weekly Schedule" />
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -266,9 +273,10 @@ export default function StudyPlanPage() {
         </CardContent>
       </Card>
 
+      <SectionHeader title="Focus Areas & Goals" />
       <div className="grid gap-6 md:grid-cols-2">
         {/* Priority Topics */}
-        <Card>
+        <Card className="rounded-xl bg-gradient-to-br from-rose-500/5 to-orange-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
@@ -292,7 +300,7 @@ export default function StudyPlanPage() {
         </Card>
 
         {/* Milestones */}
-        <Card>
+        <Card className="rounded-xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5" />

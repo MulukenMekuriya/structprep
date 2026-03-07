@@ -19,7 +19,11 @@ import {
   RotateCcw,
   Eye,
   Lightbulb,
+  Clock,
+  Target,
+  SkipForward,
 } from "lucide-react";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page-header";
 import {
   CODE_NAV_CHALLENGES,
   type CodeNavChallenge,
@@ -125,55 +129,57 @@ export default function CodeNavDrillPage() {
   if (mode === "intro") {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Search className="h-8 w-8 text-blue-500" />
-            Code Navigation Trainer
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Practice finding code sections in your physical books. Speed = exam points.
-          </p>
-        </div>
+        <PageHeader
+          icon={<Search className="h-6 w-6" />}
+          iconGradient="from-cyan-500/10 to-blue-500/10"
+          iconAccent="text-cyan-600 dark:text-cyan-400"
+          title="Code Navigation Trainer"
+          description="Practice finding sections in your reference codes quickly"
+        />
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">How It Works</CardTitle>
+            <SectionHeader title="How It Works" />
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>You'll see a <strong>code reference</strong> (e.g., "AISC 360-16 Table J3.2").</p>
+            <p>You&apos;ll see a <strong>code reference</strong> (e.g., &quot;AISC 360-16 Table J3.2&quot;).</p>
             <p>Open your <strong>physical code book</strong> and find that section.</p>
-            <p>Click <strong>"Found It!"</strong> when you've located it. A hint is available if you're stuck.</p>
+            <p>Click <strong>&quot;Found It!&quot;</strong> when you&apos;ve located it. A hint is available if you&apos;re stuck.</p>
             <p>Goal: find every section in under <strong>60 seconds</strong>.</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Filter by Code Book</CardTitle>
+            <SectionHeader title="Filter by Code Book" />
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 flex-wrap">
-              {CODE_FILTER_OPTIONS.map((code) => (
-                <Button
-                  key={code}
-                  variant={codeFilter === code ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCodeFilter(code)}
-                >
-                  {code}
-                  {code !== "All" && (
-                    <Badge variant="secondary" className="ml-1 text-[10px]">
-                      {CODE_NAV_CHALLENGES.filter((c) => c.code === code).length}
-                    </Badge>
-                  )}
-                </Button>
-              ))}
+              {CODE_FILTER_OPTIONS.map((code) => {
+                const isActive = codeFilter === code;
+                return (
+                  <Button
+                    key={code}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    className={`transition-all ${!isActive ? "hover:border-cyan-500/50 hover:bg-cyan-500/5" : ""}`}
+                    onClick={() => setCodeFilter(code)}
+                  >
+                    {code}
+                    {code !== "All" && (
+                      <Badge variant="secondary" className="ml-1 text-[10px]">
+                        {CODE_NAV_CHALLENGES.filter((c) => c.code === code).length}
+                      </Badge>
+                    )}
+                  </Button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
-        <Button size="lg" className="w-full" onClick={startDrill}>
-          <BookOpen className="h-5 w-5 mr-2" />
+        <Button size="lg" className="w-full group" onClick={startDrill}>
+          <BookOpen className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
           Start Drill ({codeFilter === "All"
             ? Math.min(10, CODE_NAV_CHALLENGES.length)
             : Math.min(10, CODE_NAV_CHALLENGES.filter((c) => c.code === codeFilter).length)} lookups)
@@ -193,80 +199,94 @@ export default function CodeNavDrillPage() {
 
     return (
       <div className="max-w-2xl mx-auto space-y-6">
+        <PageHeader
+          icon={<Trophy className="h-6 w-6" />}
+          iconGradient="from-cyan-500/10 to-blue-500/10"
+          iconAccent="text-cyan-600 dark:text-cyan-400"
+          title="Navigation Drill Complete"
+          description={`Found ${underTarget} of ${completed.length} sections under target time`}
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            icon={<Clock className="h-4 w-4" />}
+            iconColor="text-cyan-500"
+            label="Avg Lookup"
+            value={`${avgTime}s`}
+            gradient="from-cyan-500/5 to-transparent"
+          />
+          <StatCard
+            icon={<Target className="h-4 w-4" />}
+            iconColor="text-green-500"
+            label="Under Target"
+            value={`${underTarget}/${completed.length}`}
+            gradient="from-green-500/5 to-transparent"
+          />
+          <StatCard
+            icon={<SkipForward className="h-4 w-4" />}
+            iconColor="text-orange-500"
+            label="Skipped"
+            value={skipped}
+            gradient="from-orange-500/5 to-transparent"
+          />
+        </div>
+
         <Card>
-          <CardHeader className="text-center">
-            <Trophy className="h-12 w-12 mx-auto text-yellow-500 mb-2" />
-            <CardTitle className="text-2xl">Navigation Drill Complete</CardTitle>
+          <CardHeader>
+            <SectionHeader title="Lookup Breakdown" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{avgTime}s</div>
-                <p className="text-xs text-muted-foreground">Avg Lookup</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{underTarget}/{completed.length}</div>
-                <p className="text-xs text-muted-foreground">Under Target</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{skipped}</div>
-                <p className="text-xs text-muted-foreground">Skipped</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              {results.map((r, i) => {
-                const underTime = r.timeTaken <= r.challenge.targetTimeSec;
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-3 rounded-lg border p-3 ${
-                      r.skipped
-                        ? "border-orange-200 dark:border-orange-900 opacity-60"
-                        : underTime
-                          ? "border-green-200 dark:border-green-900"
-                          : "border-yellow-200 dark:border-yellow-900"
-                    }`}
-                  >
-                    {r.skipped ? (
-                      <Eye className="h-5 w-5 text-orange-500 shrink-0" />
-                    ) : underTime ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                    ) : (
-                      <Timer className="h-5 w-5 text-yellow-500 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {r.challenge.code} {r.challenge.section}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {r.challenge.description}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className={`text-sm font-mono font-bold ${underTime ? "text-green-600" : "text-yellow-600"}`}>
-                        {r.skipped ? "—" : `${r.timeTaken}s`}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground">
-                        target: {r.challenge.targetTimeSec}s
-                      </p>
-                    </div>
+          <CardContent className="space-y-2">
+            {results.map((r, i) => {
+              const underTime = r.timeTaken <= r.challenge.targetTimeSec;
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+                    r.skipped
+                      ? "border-orange-500/20 bg-orange-500/5 opacity-60"
+                      : underTime
+                        ? "border-green-500/20 bg-green-500/5 dark:border-green-500/15 dark:bg-green-500/5"
+                        : "border-yellow-500/20 bg-yellow-500/5 dark:border-yellow-500/15 dark:bg-yellow-500/5"
+                  }`}
+                >
+                  {r.skipped ? (
+                    <Eye className="h-5 w-5 text-orange-500 shrink-0" />
+                  ) : underTime ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                  ) : (
+                    <Timer className="h-5 w-5 text-yellow-500 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      {r.challenge.code} {r.challenge.section}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {r.challenge.description}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="flex gap-3 justify-center pt-2">
-              <Button variant="outline" onClick={() => setMode("intro")}>
-                Back
-              </Button>
-              <Button onClick={startDrill}>
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Drill Again
-              </Button>
-            </div>
+                  <div className="text-right shrink-0">
+                    <span className={`text-sm font-mono font-bold ${r.skipped ? "text-orange-500" : underTime ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}>
+                      {r.skipped ? "---" : `${r.timeTaken}s`}
+                    </span>
+                    <p className="text-[10px] text-muted-foreground">
+                      target: {r.challenge.targetTimeSec}s
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
+
+        <div className="flex gap-3 justify-center pt-2">
+          <Button variant="outline" onClick={() => setMode("intro")}>
+            Back
+          </Button>
+          <Button className="group" onClick={startDrill}>
+            <RotateCcw className="h-4 w-4 mr-1 transition-transform group-hover:-rotate-180" />
+            Drill Again
+          </Button>
+        </div>
       </div>
     );
   }

@@ -14,11 +14,23 @@ import { Calculator, Search } from "lucide-react";
 import { NCEES_TOPICS, TOPIC_SHORT_LABELS } from "@/types";
 import { FORMULA_SHEETS } from "@/lib/formulas";
 import { Markdown } from "@/components/ui/markdown";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function FormulasPage() {
   const [search, setSearch] = useState("");
 
   const searchLower = search.toLowerCase();
+
+  const topicGradients: Record<string, string> = {
+    "structural-analysis": "from-violet-500/5 to-purple-500/5",
+    "steel-design": "from-blue-500/5 to-sky-500/5",
+    "concrete-design": "from-amber-500/5 to-orange-500/5",
+    "wood-design": "from-emerald-500/5 to-green-500/5",
+    "masonry-design": "from-rose-500/5 to-pink-500/5",
+    "foundation-design": "from-teal-500/5 to-cyan-500/5",
+    "lateral-forces": "from-indigo-500/5 to-blue-500/5",
+    "general-structures": "from-slate-500/5 to-gray-500/5",
+  };
 
   function filterFormulas(topic: string) {
     const categories = FORMULA_SHEETS[topic] || [];
@@ -40,20 +52,21 @@ export default function FormulasPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Formula Sheets</h1>
-        <p className="text-muted-foreground">
-          Key formulas organized by NCEES exam topic — rendered with LaTeX.
-        </p>
-      </div>
+      <PageHeader
+        icon={<Calculator className="h-6 w-6" />}
+        iconGradient="from-emerald-500/10 to-teal-500/10"
+        iconAccent="text-emerald-600 dark:text-emerald-400"
+        title="Formula Sheets"
+        description="Verified formulas for the PE Civil: Structures exam"
+      />
 
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search formulas (e.g., moment, shear, wind, buckling...)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-10 rounded-xl border-border/60 h-11"
         />
       </div>
 
@@ -79,7 +92,7 @@ export default function FormulasPage() {
                 </p>
               ) : (
                 categories.map((category) => (
-                  <Card key={category.title}>
+                  <Card key={category.title} className={`rounded-xl bg-gradient-to-br ${topicGradients[topic] || "from-muted/30 to-transparent"}`}>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
                         <Calculator className="h-4 w-4" />
@@ -91,7 +104,7 @@ export default function FormulasPage() {
                         {category.formulas.map((formula) => (
                           <div
                             key={formula.name}
-                            className="rounded-lg border p-4 space-y-2"
+                            className="rounded-xl border bg-background/60 p-4 space-y-2"
                           >
                             <div className="flex items-start justify-between">
                               <h4 className="font-medium text-sm">

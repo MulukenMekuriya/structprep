@@ -18,7 +18,10 @@ import {
   Timer,
   BookOpen,
   RotateCcw,
+  Target,
+  Clock,
 } from "lucide-react";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page-header";
 import {
   WHICH_CODE_SCENARIOS,
   type WhichCodeScenario,
@@ -135,54 +138,68 @@ export default function WhichCodeDrillPage() {
   if (mode === "intro") {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Zap className="h-8 w-8 text-yellow-500" />
-            Which Code?
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Train the #1 exam skill: instantly recognizing which code book to grab.
-          </p>
-        </div>
+        <PageHeader
+          icon={<Zap className="h-6 w-6" />}
+          iconGradient="from-amber-500/10 to-yellow-500/10"
+          iconAccent="text-amber-600 dark:text-amber-400"
+          title="Which Code?"
+          description="Test your knowledge of which code governs each scenario"
+        />
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">How It Works</CardTitle>
+            <SectionHeader title="How It Works" />
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>You'll see a problem description. Your job is to identify <strong>which code book</strong> you'd reach for — not solve the problem.</p>
+            <p>You&apos;ll see a problem description. Your job is to identify <strong>which code book</strong> you&apos;d reach for — not solve the problem.</p>
             <p>You have <strong>{TIME_LIMIT} seconds</strong> per question. Speed matters on exam day.</p>
-            <p>After answering, you'll see the correct code and specific section reference.</p>
+            <p>After answering, you&apos;ll see the correct code and specific section reference.</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Difficulty</CardTitle>
+            <SectionHeader title="Difficulty" />
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 flex-wrap">
-              {(["all", "easy", "medium", "hard"] as const).map((d) => (
-                <Button
-                  key={d}
-                  variant={difficulty === d ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDifficulty(d)}
-                >
-                  {d === "all" ? "All Levels" : d.charAt(0).toUpperCase() + d.slice(1)}
-                  {d !== "all" && (
-                    <Badge variant="secondary" className="ml-1 text-[10px]">
-                      {WHICH_CODE_SCENARIOS.filter((s) => s.difficulty === d).length}
-                    </Badge>
-                  )}
-                </Button>
-              ))}
+              {(["all", "easy", "medium", "hard"] as const).map((d) => {
+                const isActive = difficulty === d;
+                const colorMap = {
+                  all: "hover:border-primary/50",
+                  easy: "hover:border-green-500/50",
+                  medium: "hover:border-yellow-500/50",
+                  hard: "hover:border-red-500/50",
+                };
+                const activeColorMap = {
+                  all: "",
+                  easy: "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400",
+                  medium: "bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400",
+                  hard: "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400",
+                };
+                return (
+                  <Button
+                    key={d}
+                    variant={isActive && d === "all" ? "default" : "outline"}
+                    size="sm"
+                    className={`transition-all ${!isActive ? colorMap[d] : ""} ${isActive && d !== "all" ? activeColorMap[d] : ""}`}
+                    onClick={() => setDifficulty(d)}
+                  >
+                    {d === "all" ? "All Levels" : d.charAt(0).toUpperCase() + d.slice(1)}
+                    {d !== "all" && (
+                      <Badge variant="secondary" className="ml-1 text-[10px]">
+                        {WHICH_CODE_SCENARIOS.filter((s) => s.difficulty === d).length}
+                      </Badge>
+                    )}
+                  </Button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
-        <Button size="lg" className="w-full" onClick={startDrill}>
-          <Zap className="h-5 w-5 mr-2" />
+        <Button size="lg" className="w-full group" onClick={startDrill}>
+          <Zap className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
           Start Drill ({difficulty === "all"
             ? Math.min(15, WHICH_CODE_SCENARIOS.length)
             : Math.min(15, WHICH_CODE_SCENARIOS.filter((s) => s.difficulty === difficulty).length)} questions)
@@ -200,64 +217,80 @@ export default function WhichCodeDrillPage() {
 
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <Card>
-          <CardHeader className="text-center">
-            <Trophy className="h-12 w-12 mx-auto text-yellow-500 mb-2" />
-            <CardTitle className="text-2xl">Drill Complete</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{pct}%</div>
-                <p className="text-xs text-muted-foreground">Accuracy</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{correct}/{total}</div>
-                <p className="text-xs text-muted-foreground">Correct</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <div className="text-3xl font-bold">{avgTime}s</div>
-                <p className="text-xs text-muted-foreground">Avg Time</p>
-              </div>
-            </div>
+        <PageHeader
+          icon={<Trophy className="h-6 w-6" />}
+          iconGradient="from-amber-500/10 to-yellow-500/10"
+          iconAccent="text-amber-600 dark:text-amber-400"
+          title="Drill Complete"
+          description={`You answered ${correct} of ${total} correctly`}
+        />
 
-            <div className="space-y-2 pt-2">
-              {results.map((r, i) => (
-                <div
-                  key={i}
-                  className={`flex items-start gap-3 rounded-lg border p-3 ${
-                    r.correct ? "border-green-200 dark:border-green-900" : "border-red-200 dark:border-red-900"
-                  }`}
-                >
-                  {r.correct ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm line-clamp-1">{r.scenario.problem}</p>
-                    <div className="flex gap-2 mt-1 flex-wrap">
-                      <Badge variant="outline" className="text-[10px]">
-                        {r.scenario.correctCode} {r.scenario.correctSection}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground">{r.timeTaken}s</span>
-                    </div>
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            icon={<Target className="h-4 w-4" />}
+            iconColor="text-amber-500"
+            label="Accuracy"
+            value={`${pct}%`}
+            gradient="from-amber-500/5 to-transparent"
+          />
+          <StatCard
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            iconColor="text-green-500"
+            label="Correct"
+            value={`${correct}/${total}`}
+            gradient="from-green-500/5 to-transparent"
+          />
+          <StatCard
+            icon={<Clock className="h-4 w-4" />}
+            iconColor="text-blue-500"
+            label="Avg Time"
+            value={`${avgTime}s`}
+            gradient="from-blue-500/5 to-transparent"
+          />
+        </div>
+
+        <Card>
+          <CardHeader>
+            <SectionHeader title="Question Breakdown" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {results.map((r, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                  r.correct
+                    ? "border-green-500/20 bg-green-500/5 dark:border-green-500/15 dark:bg-green-500/5"
+                    : "border-red-500/20 bg-red-500/5 dark:border-red-500/15 dark:bg-red-500/5"
+                }`}
+              >
+                {r.correct ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm line-clamp-1">{r.scenario.problem}</p>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    <Badge variant="outline" className="text-[10px]">
+                      {r.scenario.correctCode} {r.scenario.correctSection}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">{r.timeTaken}s</span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex gap-3 justify-center pt-2">
-              <Button variant="outline" onClick={() => setMode("intro")}>
-                Back
-              </Button>
-              <Button onClick={startDrill}>
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Drill Again
-              </Button>
-            </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
+
+        <div className="flex gap-3 justify-center pt-2">
+          <Button variant="outline" onClick={() => setMode("intro")}>
+            Back
+          </Button>
+          <Button className="group" onClick={startDrill}>
+            <RotateCcw className="h-4 w-4 mr-1 transition-transform group-hover:-rotate-180" />
+            Drill Again
+          </Button>
+        </div>
       </div>
     );
   }

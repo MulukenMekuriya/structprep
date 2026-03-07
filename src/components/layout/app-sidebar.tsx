@@ -43,7 +43,7 @@ const studyItems = [
 
 const drillItems = [
   { title: "Which Code?", url: "/drills/which-code", icon: Zap },
-  { title: "Code Navigation", url: "/drills/code-nav", icon: Search },
+  { title: "Code Nav", url: "/drills/code-nav", icon: Search },
 ];
 
 const referenceItems = [
@@ -59,26 +59,31 @@ const manageItems = [
 export function AppSidebar() {
   const pathname = usePathname();
 
+  const isActive = (url: string) =>
+    pathname === url || pathname.startsWith(url + "/");
+
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-6 py-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-primary" />
+      <SidebarHeader className="border-b px-5 py-4">
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors">
+            <GraduationCap className="h-4.5 w-4.5 text-primary" />
+          </div>
           <div>
-            <h1 className="text-lg font-bold leading-tight">StructPrep</h1>
-            <p className="text-xs text-muted-foreground">PE Civil: Structures</p>
+            <h1 className="text-sm font-bold leading-tight tracking-tight">StructPrep</h1>
+            <p className="text-[10px] text-muted-foreground leading-tight">PE Civil: Structures</p>
           </div>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Study</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Study</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {studyItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
+                  <SidebarMenuButton isActive={isActive(item.url)} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
@@ -89,12 +94,12 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Drills</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Drills</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {drillItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
+                  <SidebarMenuButton isActive={isActive(item.url)} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
@@ -105,12 +110,12 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Reference</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Reference</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {referenceItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
+                  <SidebarMenuButton isActive={isActive(item.url)} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
@@ -121,12 +126,12 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Manage</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {manageItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
+                  <SidebarMenuButton isActive={isActive(item.url)} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
@@ -137,8 +142,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        <p className="text-xs text-muted-foreground text-center">
+      <SidebarFooter className="border-t px-5 py-3">
+        <p className="text-[10px] text-muted-foreground">
           Target: June 2026 PE Exam
         </p>
       </SidebarFooter>

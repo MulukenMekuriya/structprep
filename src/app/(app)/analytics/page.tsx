@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page-header";
 import {
   Loader2,
   Target,
@@ -90,13 +91,14 @@ export default function AnalyticsPage() {
   if (!data || data.totalAttempted === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Performance Analytics</h1>
-          <p className="text-muted-foreground">
-            Start practicing to see your performance analytics here.
-          </p>
-        </div>
-        <Card className="p-8 text-center">
+        <PageHeader
+          icon={<BarChart3 className="h-6 w-6" />}
+          iconGradient="from-violet-500/10 to-purple-500/10"
+          iconAccent="text-violet-600 dark:text-violet-400"
+          title="Performance Analytics"
+          description="Start practicing to see your performance analytics here."
+        />
+        <Card className="rounded-xl p-8 text-center">
           <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">No data yet. Complete some practice questions to unlock analytics.</p>
         </Card>
@@ -108,81 +110,86 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Performance Analytics</h1>
-        <p className="text-muted-foreground">
-          Deep dive into your PE exam preparation progress
-        </p>
-      </div>
+      <PageHeader
+        icon={<BarChart3 className="h-6 w-6" />}
+        iconGradient="from-violet-500/10 to-purple-500/10"
+        iconAccent="text-violet-600 dark:text-violet-400"
+        title="Performance Analytics"
+        description="Track your progress and identify areas to improve"
+      />
 
       {/* Summary Cards */}
+      <SectionHeader title="Summary" />
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Accuracy</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.overallAccuracy}%</div>
-            <p className="text-xs text-muted-foreground">
-              {data.totalCorrect}/{data.totalAttempted} correct
-            </p>
-            <Progress value={data.overallAccuracy} className="h-1.5 mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Time/Question</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.floor(data.avgTimePerQuestion / 60)}m {data.avgTimePerQuestion % 60}s
+        <StatCard
+          icon={<Target className="h-4 w-4" />}
+          iconColor="text-violet-600 dark:text-violet-400"
+          label="Overall Accuracy"
+          gradient="from-violet-500/10 to-purple-500/5"
+          value={
+            <div>
+              <div>{data.overallAccuracy}%</div>
+              <p className="text-xs font-normal text-muted-foreground">
+                {data.totalCorrect}/{data.totalAttempted} correct
+              </p>
+              <Progress value={data.overallAccuracy} className="h-1.5 mt-2" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Target: ~6 min for PE exam
-            </p>
-          </CardContent>
-        </Card>
+          }
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fastest Topic</CardTitle>
-            <Zap className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold truncate">
-              {data.paceAnalysis.fastestTopic?.label || "N/A"}
+        <StatCard
+          icon={<Clock className="h-4 w-4" />}
+          iconColor="text-blue-600 dark:text-blue-400"
+          label="Avg Time/Question"
+          gradient="from-blue-500/10 to-sky-500/5"
+          value={
+            <div>
+              <div>{Math.floor(data.avgTimePerQuestion / 60)}m {data.avgTimePerQuestion % 60}s</div>
+              <p className="text-xs font-normal text-muted-foreground">
+                Target: ~6 min for PE exam
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {data.paceAnalysis.fastestTopic
-                ? `${Math.floor(data.paceAnalysis.fastestTopic.avgTimeSec / 60)}m ${data.paceAnalysis.fastestTopic.avgTimeSec % 60}s avg`
-                : ""}
-            </p>
-          </CardContent>
-        </Card>
+          }
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Slowest Topic</CardTitle>
-            <Clock className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold truncate">
-              {data.paceAnalysis.slowestTopic?.label || "N/A"}
+        <StatCard
+          icon={<Zap className="h-4 w-4" />}
+          iconColor="text-green-600 dark:text-green-400"
+          label="Fastest Topic"
+          gradient="from-green-500/10 to-emerald-500/5"
+          value={
+            <div>
+              <div className="text-lg truncate">{data.paceAnalysis.fastestTopic?.label || "N/A"}</div>
+              <p className="text-xs font-normal text-muted-foreground">
+                {data.paceAnalysis.fastestTopic
+                  ? `${Math.floor(data.paceAnalysis.fastestTopic.avgTimeSec / 60)}m ${data.paceAnalysis.fastestTopic.avgTimeSec % 60}s avg`
+                  : ""}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {data.paceAnalysis.slowestTopic
-                ? `${Math.floor(data.paceAnalysis.slowestTopic.avgTimeSec / 60)}m ${data.paceAnalysis.slowestTopic.avgTimeSec % 60}s avg`
-                : ""}
-            </p>
-          </CardContent>
-        </Card>
+          }
+        />
+
+        <StatCard
+          icon={<Clock className="h-4 w-4" />}
+          iconColor="text-orange-600 dark:text-orange-400"
+          label="Slowest Topic"
+          gradient="from-orange-500/10 to-amber-500/5"
+          value={
+            <div>
+              <div className="text-lg truncate">{data.paceAnalysis.slowestTopic?.label || "N/A"}</div>
+              <p className="text-xs font-normal text-muted-foreground">
+                {data.paceAnalysis.slowestTopic
+                  ? `${Math.floor(data.paceAnalysis.slowestTopic.avgTimeSec / 60)}m ${data.paceAnalysis.slowestTopic.avgTimeSec % 60}s avg`
+                  : ""}
+              </p>
+            </div>
+          }
+        />
       </div>
 
       {/* Weekly Activity Trend */}
-      <Card>
+      <SectionHeader title="Weekly Activity" />
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>Weekly Activity</CardTitle>
           <CardDescription>Questions attempted per week with accuracy</CardDescription>
@@ -219,9 +226,10 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
+      <SectionHeader title="Topic Breakdown" />
       <div className="grid gap-6 md:grid-cols-2">
         {/* Topic Accuracy */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Accuracy by Topic</CardTitle>
             <CardDescription>Performance across NCEES exam categories</CardDescription>
@@ -259,7 +267,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Topic Pace */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Pace by Topic</CardTitle>
             <CardDescription>Average time per question (target: ~6 min)</CardDescription>
@@ -294,7 +302,8 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Difficulty Breakdown */}
-      <Card>
+      <SectionHeader title="Difficulty Breakdown" />
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>Difficulty Breakdown</CardTitle>
           <CardDescription>Accuracy by question difficulty level</CardDescription>
@@ -324,7 +333,9 @@ export default function AnalyticsPage() {
 
       {/* Subtopic Breakdown */}
       {data.subtopicBreakdown.length > 0 && (
-        <Card>
+        <>
+        <SectionHeader title="Subtopic Performance" />
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Subtopic Performance</CardTitle>
             <CardDescription>
@@ -358,6 +369,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
+        </>
       )}
     </div>
   );

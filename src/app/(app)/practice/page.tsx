@@ -1,16 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Hash } from "lucide-react";
+import { Timer, Hash, Play, Shuffle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 import {
   NCEES_TOPICS,
   TOPIC_LABELS,
@@ -27,7 +22,7 @@ type Selection =
 export default function PracticePage() {
   const [selection, setSelection] = useState<Selection>({ type: "all" });
   const [questionCount, setQuestionCount] = useState(10);
-  const [timeLimit, setTimeLimit] = useState(0); // 0 = no limit, in minutes
+  const [timeLimit, setTimeLimit] = useState(0);
 
   function isTopicSelected(topic: NCEESTopic) {
     return (
@@ -80,75 +75,100 @@ export default function PracticePage() {
     window.location.href = `/practice/session?${params.toString()}`;
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Practice</h1>
-        <p className="text-muted-foreground">
-          Select a topic or subtopic to practice, or study all topics with
-          adaptive difficulty.
-        </p>
-      </div>
+  const selectionLabel = selection.type === "subtopic"
+    ? selection.subtopic
+    : selection.type === "topic"
+      ? TOPIC_LABELS[selection.topic]
+      : "All Topics";
 
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Header */}
+      <PageHeader
+        icon={<BookOpen className="h-6 w-6" />}
+        iconGradient="from-blue-500/10 to-indigo-500/10"
+        iconAccent="text-blue-600 dark:text-blue-400"
+        title="Practice"
+        description="Build your skills with targeted question sets"
+      />
+
+      {/* Topic Selection */}
+      <SectionHeader title="Select topics" />
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {/* All Topics Card */}
         <Card
-          className={`cursor-pointer transition-colors hover:border-primary/50 ${
-            selection.type === "all" ? "border-primary bg-primary/5" : ""
+          className={`cursor-pointer rounded-xl border transition-all hover:shadow-md hover:border-primary/20 ${
+            selection.type === "all"
+              ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20"
+              : "bg-gradient-to-br from-muted/30 to-transparent"
           }`}
           onClick={() => setSelection({ type: "all" })}
         >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">All Topics</CardTitle>
-            <CardDescription>
-              Adaptive mix weighted to NCEES exam distribution
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="secondary">100%</Badge>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Shuffle className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">All Topics</p>
+                <p className="text-xs text-muted-foreground">
+                  Adaptive mix · NCEES weighted
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* Topic Cards */}
         {NCEES_TOPICS.map((topic) => {
           const expanded = isTopicSelected(topic);
           const subtopics = TOPIC_SUBTOPICS[topic];
+          const weight = Math.round(TOPIC_WEIGHTS[topic] * 100);
+          const examQs = Math.round(TOPIC_WEIGHTS[topic] * 80);
 
           return (
             <Card
               key={topic}
-              className={`cursor-pointer transition-colors hover:border-primary/50 ${
-                expanded ? "border-primary bg-primary/5" : ""
+              className={`cursor-pointer rounded-xl border transition-all hover:shadow-md hover:border-primary/20 ${
+                expanded
+                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20"
+                  : "bg-gradient-to-br from-muted/30 to-transparent"
               }`}
               onClick={() => handleTopicClick(topic)}
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  {TOPIC_LABELS[topic]}
-                </CardTitle>
-                <CardDescription>
-                  {Math.round(TOPIC_WEIGHTS[topic] * 100)}% of exam
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Badge variant="secondary">
-                  {Math.round(TOPIC_WEIGHTS[topic] * 80)} questions on exam
-                </Badge>
+              <CardContent className="pt-5 pb-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-sm leading-tight">
+                      {TOPIC_LABELS[topic]}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {weight}% of exam · ~{examQs} questions
+                    </p>
+                  </div>
+                  {expanded ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                </div>
 
                 {expanded && (
-                  <ul className="space-y-1 pt-1">
+                  <div className="space-y-0.5 pt-1 border-t">
                     {subtopics.map((sub) => (
-                      <li
+                      <div
                         key={sub}
-                        className={`rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-primary/10 ${
+                        className={`rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-pointer ${
                           isSubtopicSelected(topic, sub)
                             ? "bg-primary/15 text-primary font-medium"
-                            : "text-muted-foreground"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                         onClick={(e) => handleSubtopicClick(e, topic, sub)}
                       >
                         {sub}
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -156,68 +176,71 @@ export default function PracticePage() {
         })}
       </div>
 
-      {/* Session Configuration */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Questions:</span>
-              <div className="flex gap-1">
-                {[5, 10, 15, 20, 30].map((n) => (
-                  <Button
-                    key={n}
-                    variant={questionCount === n ? "default" : "outline"}
-                    size="sm"
-                    className="h-8 w-10 text-xs"
-                    onClick={() => setQuestionCount(n)}
-                  >
-                    {n}
-                  </Button>
-                ))}
+      {/* Sticky Bottom Bar */}
+      <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-5xl">
+        <div className="rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg px-4 py-3">
+          <SectionHeader title="Session settings" />
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            {/* Config */}
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="flex items-center gap-1.5">
+                <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex gap-1">
+                  {[5, 10, 15, 20, 30].map((n) => (
+                    <Button
+                      key={n}
+                      variant={questionCount === n ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 w-8 text-xs"
+                      onClick={() => setQuestionCount(n)}
+                    >
+                      {n}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="h-4 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex gap-1">
+                  {[
+                    { label: "No limit", value: 0 },
+                    { label: "30m", value: 30 },
+                    { label: "60m", value: 60 },
+                    { label: "90m", value: 90 },
+                  ].map(({ label, value }) => (
+                    <Button
+                      key={value}
+                      variant={timeLimit === value ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setTimeLimit(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Timer className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Time Limit:</span>
-              <div className="flex gap-1">
-                {[
-                  { label: "None", value: 0 },
-                  { label: "30m", value: 30 },
-                  { label: "60m", value: 60 },
-                  { label: "90m", value: 90 },
-                ].map(({ label, value }) => (
-                  <Button
-                    key={value}
-                    variant={timeLimit === value ? "default" : "outline"}
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => setTimeLimit(value)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+
+            {/* Start Button */}
+            <Button size="lg" onClick={startPractice} className="gap-2 shrink-0 w-full sm:w-auto">
+              <Play className="h-4 w-4" />
+              {selectionLabel}
+              <Badge variant="secondary" className="text-[10px] ml-1">
+                {questionCount}q{timeLimit > 0 ? ` · ${timeLimit}m` : ""}
+              </Badge>
+            </Button>
           </div>
           {timeLimit > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {Math.round(timeLimit / questionCount * 60)}s per question — {timeLimit < questionCount * 6 / 60 ? "faster than exam pace!" : "at exam pace"}
+            <p className="text-[10px] text-muted-foreground text-center sm:text-left mt-1">
+              {Math.round(timeLimit / questionCount * 60)}s per question —{" "}
+              {(timeLimit / questionCount) < 6 ? "faster than exam pace!" : "at exam pace"}
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-center">
-        <Button size="lg" onClick={startPractice}>
-          {selection.type === "subtopic"
-            ? `Practice: ${selection.subtopic}`
-            : selection.type === "topic"
-              ? `Practice: ${TOPIC_LABELS[selection.topic]}`
-              : "Start Practice Session"}
-          {timeLimit > 0 && <Badge variant="secondary" className="ml-2 text-[10px]">{timeLimit}m</Badge>}
-        </Button>
+        </div>
       </div>
+
     </div>
   );
 }

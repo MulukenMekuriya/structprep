@@ -23,10 +23,12 @@ import {
   ExternalLink,
   Eye,
   X,
+  Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Markdown } from "@/components/ui/markdown";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 interface ReferenceMaterial {
   id: string;
@@ -293,21 +295,22 @@ function ReferencesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Reference Library</h1>
-          <p className="text-muted-foreground">
-            Browse uploaded structural codes or search across all documents.
-          </p>
-        </div>
-        <Link
-          href="/admin"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload PDF
-        </Link>
-      </div>
+      <PageHeader
+        icon={<Library className="h-6 w-6" />}
+        iconGradient="from-indigo-500/10 to-blue-500/10"
+        iconAccent="text-indigo-600 dark:text-indigo-400"
+        title="Reference Library"
+        description="Upload and search your PE exam reference codes"
+        action={
+          <Link
+            href="/admin"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Upload PDF
+          </Link>
+        }
+      />
 
       {/* Search Bar */}
       <form
@@ -340,10 +343,9 @@ function ReferencesPage() {
 
       {searchResults !== null && !searching && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">
-            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}{" "}
-            for &ldquo;{query}&rdquo;
-          </h2>
+          <SectionHeader
+            title={`${searchResults.length} result${searchResults.length !== 1 ? "s" : ""} for "${query}"`}
+          />
 
           {searchResults.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
@@ -354,7 +356,7 @@ function ReferencesPage() {
             searchResults.map((result, i) => (
               <Card
                 key={i}
-                className="hover:border-primary/30 transition-colors"
+                className="hover:border-indigo-500/30 hover:shadow-md transition-all duration-200"
               >
                 <CardHeader className="py-3 px-4">
                   <div className="flex items-center justify-between">
@@ -445,9 +447,9 @@ function ReferencesPage() {
       {/* Document Library */}
       {searchResults === null && !searching && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">
-            {loading ? "Loading..." : `${materials.length} Documents`}
-          </h2>
+          <SectionHeader
+            title={loading ? "Loading..." : `Your Documents (${materials.length})`}
+          />
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -475,7 +477,7 @@ function ReferencesPage() {
               {materials.map((material) => (
                 <Card
                   key={material.id}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  className="cursor-pointer hover:border-indigo-500/30 hover:shadow-md transition-all duration-200"
                   onClick={() => openDocument(material.id)}
                 >
                   <CardHeader className="pb-2">
