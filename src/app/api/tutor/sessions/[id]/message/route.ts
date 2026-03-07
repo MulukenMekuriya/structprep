@@ -188,17 +188,19 @@ export async function POST(
         }
 
         // Save assistant message (don't block stream close)
-        supabase.from("sp_tutor_messages").insert({
-          session_id: sessionId,
-          role: "assistant",
-          content: fullResponse,
-          retrieved_chunks: contexts.map((c) => ({
-            source: c.source_title,
-            section: c.chunk.section_ref,
-            page: c.chunk.page_number,
-          })),
-          tokens_used: fullResponse.length / 4,
-        }).then(() =>
+        Promise.resolve(
+          supabase.from("sp_tutor_messages").insert({
+            session_id: sessionId,
+            role: "assistant",
+            content: fullResponse,
+            retrieved_chunks: contexts.map((c) => ({
+              source: c.source_title,
+              section: c.chunk.section_ref,
+              page: c.chunk.page_number,
+            })),
+            tokens_used: fullResponse.length / 4,
+          })
+        ).then(() =>
           supabase.rpc("sp_increment_message_count", {
             session_id_param: sessionId,
           })
