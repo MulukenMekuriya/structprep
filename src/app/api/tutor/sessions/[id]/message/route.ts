@@ -80,6 +80,9 @@ export async function POST(
   }
 
   // Build system prompt
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response("ANTHROPIC_API_KEY is not configured", { status: 500 });
+  }
   const anthropic = getAnthropicClient();
   const systemPrompt = buildTutorSystemPrompt(
     contexts,
