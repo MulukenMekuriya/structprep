@@ -10,7 +10,7 @@ import "katex/dist/katex.min.css";
 function RawSvg({ html }: { html: string }) {
   return (
     <div
-      className="my-4 flex justify-center [&_svg]:max-w-full"
+      className="my-6 flex justify-center [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:overflow-visible"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -42,7 +42,7 @@ function linkifyCodeRefs(text: string): React.ReactNode[] {
         title={`Search references: ${searchQuery}`}
       >
         {fullMatch}
-      </a>
+      </a>,
     );
     lastIndex = match.index + fullMatch.length;
   }
@@ -60,18 +60,38 @@ function linkifyCodeRefs(text: string): React.ReactNode[] {
 // so we suppress them here to avoid React DOM warnings.
 const svgPassthrough = () => null;
 const svgElementOverrides: Partial<Components> = Object.fromEntries(
-  ["svg", "text", "defs", "marker", "polygon", "polyline", "line", "rect", "circle", "ellipse", "path", "g", "use", "symbol", "clipPath", "linearGradient", "radialGradient", "stop", "pattern", "mask", "foreignObject", "image", "tspan"].map(
-    (tag) => [tag, svgPassthrough]
-  )
+  [
+    "svg",
+    "text",
+    "defs",
+    "marker",
+    "polygon",
+    "polyline",
+    "line",
+    "rect",
+    "circle",
+    "ellipse",
+    "path",
+    "g",
+    "use",
+    "symbol",
+    "clipPath",
+    "linearGradient",
+    "radialGradient",
+    "stop",
+    "pattern",
+    "mask",
+    "foreignObject",
+    "image",
+    "tspan",
+  ].map((tag) => [tag, svgPassthrough]),
 );
 
 const markdownComponents: Components = {
   // Suppress SVG elements that leak through rehypeRaw
   ...svgElementOverrides,
   // Override text rendering inside paragraphs, list items, etc.
-  p: ({ children, ...props }) => (
-    <p {...props}>{processChildren(children)}</p>
-  ),
+  p: ({ children, ...props }) => <p {...props}>{processChildren(children)}</p>,
   li: ({ children, ...props }) => (
     <li {...props}>{processChildren(children)}</li>
   ),
@@ -99,21 +119,30 @@ function processChildren(children: React.ReactNode): React.ReactNode {
 }
 
 export function Markdown({ children }: { children: string }) {
-  // Extract SVG blocks and render them separately to avoid React DOM warnings
+  // Step 1: Convert SVG code blocks (```xml, ```svg, ```html, or bare ```) into inline SVG
+  const processed = children.replace(
+    /```(?:xml|svg|html)?\s*\n(<svg[\s\S]*?<\/svg>)\s*\n```/gi,
+    (_match, svgContent: string) => svgContent,
+  );
+
+  // Step 2: Extract inline SVG blocks and render them separately to avoid React DOM warnings
   const svgRegex = /<svg[\s\S]*?<\/svg>/gi;
   const parts: { type: "text" | "svg"; content: string }[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = svgRegex.exec(children)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: "text", content: children.slice(lastIndex, match.index) });
+  while ((match = svgRegex.exec(processed)) !== null) {
+    const textBefore = processed.slice(lastIndex, match.index).trim();
+    if (textBefore) {
+      parts.push({ type: "text", content: textBefore });
     }
     parts.push({ type: "svg", content: match[0] });
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < children.length) {
-    parts.push({ type: "text", content: children.slice(lastIndex) });
+  const textAfter =
+    lastIndex < processed.length ? processed.slice(lastIndex).trim() : "";
+  if (textAfter) {
+    parts.push({ type: "text", content: textAfter });
   }
 
   // If no SVGs found, render normally
@@ -122,10 +151,10 @@ export function Markdown({ children }: { children: string }) {
       <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
         <ReactMarkdown
           remarkPlugins={[remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeKatex]}
+          rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }]]}
           components={markdownComponents}
         >
-          {children}
+          {processed}
         </ReactMarkdown>
       </div>
     );
@@ -140,12 +169,12 @@ export function Markdown({ children }: { children: string }) {
           <ReactMarkdown
             key={i}
             remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
+            rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }]]}
             components={markdownComponents}
           >
             {part.content}
           </ReactMarkdown>
-        )
+        ),
       )}
     </div>
   );

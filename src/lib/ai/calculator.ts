@@ -4,9 +4,13 @@
  * so it can verify its own calculations instead of doing mental math.
  */
 
-import type Anthropic from "@anthropic-ai/sdk";
+export interface CalculatorToolDef {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+}
 
-export const CALCULATOR_TOOL: Anthropic.Tool = {
+export const CALCULATOR_TOOL: CalculatorToolDef = {
   name: "calculator",
   description: `Evaluate a mathematical expression and return the numeric result. Use this to verify every calculation you present to the student — never rely on mental math.
 
@@ -124,9 +128,16 @@ export function evaluateExpression(input: CalculatorInput): CalculatorResult {
 /**
  * Process a calculator tool call from Claude's response.
  */
+export interface ToolResultBlock {
+  type: "tool_result";
+  tool_use_id: string;
+  content: string;
+  is_error?: boolean;
+}
+
 export function processCalculatorToolCall(
   input: Record<string, unknown>
-): Anthropic.ToolResultBlockParam {
+): ToolResultBlock {
   try {
     const calcInput: CalculatorInput = {
       expression: input.expression as string,

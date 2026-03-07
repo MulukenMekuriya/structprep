@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAIClient, AI_MODEL } from "@/lib/ai/client";
 import { buildQuestionGenerationPrompt } from "@/lib/ai/prompts";
 import { retrieveContext } from "@/lib/rag/retriever";
 import { NCEES_TOPICS, TOPIC_SUBTOPICS, TOPIC_WEIGHTS } from "@/types";
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   // Generate questions — process sequentially to avoid rate limits
   // Batch: generate up to 3 questions per API call by combining subtopics
-  const client = getAnthropicClient();
+  const client = getAIClient();
   let generated = 0;
   let errors = 0;
   const maxToGenerate = Math.min(totalNeeded, targetTotal - currentTotal);
@@ -119,14 +119,13 @@ export async function POST(request: NextRequest) {
             confidence
           );
 
-          const response = await client.messages.create({
+          const response = await client.chat.completions.create({
             model: AI_MODEL,
             max_tokens: 2000,
             messages: [{ role: "user", content: prompt }],
           });
 
-          const text =
-            response.content[0].type === "text" ? response.content[0].text : "";
+          const text = response.choices[0]?.message?.content ?? "";
 
           const jsonMatch = text.match(/\{[\s\S]*\}/);
           if (!jsonMatch) {

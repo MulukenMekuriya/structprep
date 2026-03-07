@@ -1,17 +1,22 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-let client: Anthropic | null = null;
+let client: OpenAI | null = null;
 
-export function getAnthropicClient(): Anthropic {
+export function getAIClient(): OpenAI {
   if (!client) {
-    client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+    client = new OpenAI({
+      apiKey: process.env.QWEN_API_KEY,
+      baseURL: "https://dashscope-us.aliyuncs.com/compatible-mode/v1",
     });
   }
   return client;
 }
 
-export const AI_MODEL = "claude-sonnet-4-20250514";
+/** @deprecated Use getAIClient() instead */
+export const getAnthropicClient = getAIClient;
+
+export const AI_MODEL = "qwen-plus";
+export const AI_VISION_MODEL = "qwen3-vl-plus";
 
 export const AI_RATE_LIMITS = {
   free: 50,

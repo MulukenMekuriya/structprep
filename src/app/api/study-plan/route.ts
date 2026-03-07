@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAIClient, AI_MODEL } from "@/lib/ai/client";
 import { NCEES_TOPICS, TOPIC_SHORT_LABELS, TOPIC_WEIGHTS, type NCEESTopic } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -113,16 +113,16 @@ Rules:
 - Be specific about activities (e.g., "Practice 10 steel beam design problems" not "Study steel")
 - Return ONLY valid JSON, no markdown or explanation outside the JSON`;
 
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await ai.chat.completions.create({
       model: AI_MODEL,
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    const text = response.choices[0]?.message?.content ?? "";
 
     // Extract JSON from response (handle potential markdown wrapping)
     let json;

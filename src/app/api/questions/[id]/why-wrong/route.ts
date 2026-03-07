@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAIClient, AI_MODEL } from "@/lib/ai/client";
 
 const MISTAKE_CATEGORIES = [
   "wrong_code_section",
@@ -51,7 +51,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid option" }, { status: 400 });
   }
 
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
 
   const prompt = `You are analyzing why a PE Civil: Structures exam student got a question wrong. Classify the likely mistake.
 
@@ -83,13 +83,13 @@ Return ONLY valid JSON:
   "tip": "One actionable exam tip to prevent this mistake"
 }`;
 
-  const response = await anthropic.messages.create({
+  const response = await ai.chat.completions.create({
     model: AI_MODEL,
     max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const text = response.choices[0]?.message?.content ?? "";
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);

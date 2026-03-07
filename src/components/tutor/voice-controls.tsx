@@ -99,13 +99,32 @@ export function VoiceControls({
         return;
       }
 
-      const blob = await res.blob();
-      if (blob.size === 0) {
-        console.error("TTS returned empty audio");
+      if (!res.body) {
+        console.error("TTS returned no body");
         setTtsLoading(false);
         return;
       }
 
+      // Collect chunks and start playback as soon as we have data
+      const reader = res.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let firstChunk = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (value) {
+          chunks.push(value);
+          // Start playback after first chunk arrives
+          if (firstChunk) {
+            firstChunk = false;
+            setTtsLoading(false);
+            setIsPlaying(true);
+          }
+        }
+        if (done) break;
+      }
+
+      const blob = new Blob(chunks as BlobPart[], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioRef.current = audio;
@@ -122,8 +141,6 @@ export function VoiceControls({
         audioRef.current = null;
       };
 
-      setTtsLoading(false);
-      setIsPlaying(true);
       await audio.play();
     } catch (err) {
       console.error("TTS playback error:", err);

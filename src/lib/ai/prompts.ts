@@ -45,7 +45,7 @@ function formatRetrievedContext(contexts: RetrievedContext[]): string {
   return contexts
     .map(
       (ctx, i) =>
-        `[SOURCE ${i + 1}: ${ctx.source_title}, ${ctx.chunk.section_ref || "General"}, p.${ctx.chunk.page_number}]\n${ctx.chunk.chunk_text}`
+        `[SOURCE ${i + 1}: ${ctx.source_title}, ${ctx.chunk.section_ref || "General"}, p.${ctx.chunk.page_number}]\n${ctx.chunk.chunk_text}`,
     )
     .join("\n\n");
 }
@@ -58,17 +58,18 @@ function buildSolutionTemplateBlock(studyTopic?: string): string {
     (t) =>
       t.topic.toLowerCase().includes(kw) ||
       t.subtopic.toLowerCase().includes(kw) ||
-      t.title.toLowerCase().includes(kw)
+      t.title.toLowerCase().includes(kw),
   );
   if (matches.length === 0) return "";
 
-  const blocks = matches.map((t) =>
-    `### ${t.title} (${t.subtopic})
+  const blocks = matches.map(
+    (t) =>
+      `### ${t.title} (${t.subtopic})
 Steps:
 ${t.steps.map((s, i) => `  ${i + 1}. ${s}`).join("\n")}
 Key codes: ${t.keyCodes.join(", ")}
 Common mistakes: ${t.commonMistakes.join("; ")}
-Typical time: ${t.timeEstimate}`
+Typical time: ${t.timeEstimate}`,
   );
 
   return `\n--- SOLUTION METHODOLOGY TEMPLATES (teach these step-by-step workflows) ---
@@ -104,27 +105,38 @@ export function buildTutorSystemPrompt(
   contexts: RetrievedContext[],
   availableReferences: string[] = [],
   tutorContext?: TutorContext,
-  confidence: RetrievalConfidence = "none"
+  confidence: RetrievalConfidence = "none",
 ): string {
   const contextBlock = formatRetrievedContext(contexts);
-  const refList = availableReferences.length > 0
-    ? `\nYour full reference library includes: ${availableReferences.join(", ")}.\n`
-    : "";
+  const refList =
+    availableReferences.length > 0
+      ? `\nYour full reference library includes: ${availableReferences.join(", ")}.\n`
+      : "";
 
   // Build personalized context block
   let personalBlock = "";
   if (tutorContext) {
     const parts: string[] = [];
     if (tutorContext.name) parts.push(`Student: ${tutorContext.name}`);
-    if (tutorContext.daysUntilExam !== null && tutorContext.daysUntilExam !== undefined)
+    if (
+      tutorContext.daysUntilExam !== null &&
+      tutorContext.daysUntilExam !== undefined
+    )
       parts.push(`Days until PE exam: ${tutorContext.daysUntilExam}`);
     if (tutorContext.totalAttempted && tutorContext.totalAttempted > 0)
-      parts.push(`Questions practiced: ${tutorContext.totalAttempted}, Overall accuracy: ${tutorContext.overallAccuracy}%`);
+      parts.push(
+        `Questions practiced: ${tutorContext.totalAttempted}, Overall accuracy: ${tutorContext.overallAccuracy}%`,
+      );
     if (tutorContext.weakTopics && tutorContext.weakTopics.length > 0)
-      parts.push(`Weak areas needing focus: ${tutorContext.weakTopics.map((w) => `${w.label} (${w.accuracy}%)`).join(", ")}`);
+      parts.push(
+        `Weak areas needing focus: ${tutorContext.weakTopics.map((w) => `${w.label} (${w.accuracy}%)`).join(", ")}`,
+      );
     if (tutorContext.weakSubtopics && tutorContext.weakSubtopics.length > 0)
-      parts.push(`Weak subtopics: ${tutorContext.weakSubtopics.map((w) => `${w.name} (${w.accuracy}%)`).join(", ")}`);
-    if (parts.length > 0) personalBlock = `\n--- STUDENT PROFILE ---\n${parts.join("\n")}\n--- END PROFILE ---\n`;
+      parts.push(
+        `Weak subtopics: ${tutorContext.weakSubtopics.map((w) => `${w.name} (${w.accuracy}%)`).join(", ")}`,
+      );
+    if (parts.length > 0)
+      personalBlock = `\n--- STUDENT PROFILE ---\n${parts.join("\n")}\n--- END PROFILE ---\n`;
   }
 
   // Study mode instructions
@@ -166,9 +178,10 @@ You are in open conversation mode. Answer any structural engineering question.
   };
 
   const verifiedFormulas = buildVerifiedFormulaBlock();
-  const solutionTemplates = mode === "teach" || mode === "quiz"
-    ? buildSolutionTemplateBlock(tutorContext?.studyTopic || "")
-    : "";
+  const solutionTemplates =
+    mode === "teach" || mode === "quiz"
+      ? buildSolutionTemplateBlock(tutorContext?.studyTopic || "")
+      : "";
 
   const confidenceBlock = buildConfidenceBlock(confidence);
 
@@ -213,7 +226,12 @@ CORE RULES (all modes):
 - When a structural diagram helps, include an inline SVG:
   - Beam diagrams, FBDs, shear/moment diagrams, cross-sections, connection details
   - Use viewBox for scaling, stroke="currentColor", transparent fill
-  - Label forces, dimensions, reactions with <text> elements
+  - Output the SVG as raw inline HTML — write <svg ...> directly in your response
+  - NEVER wrap SVGs in code fences (\`\`\`). Write the <svg> tag directly into the markdown, NOT inside \`\`\`xml, \`\`\`svg, \`\`\`html, or any code block
+  - Keep SVG COMPACT: only include the structural drawing with minimal dimension labels inside the SVG
+  - ALL explanatory notes, legends, annotations, and descriptions MUST go OUTSIDE the SVG as regular markdown text AFTER the closing </svg> tag
+  - Do NOT put paragraphs of text, bullet lists, or lengthy annotations inside the SVG — those belong in markdown below the diagram
+  - The SVG should be a clean diagram; the markdown below it should explain what the diagram shows
 - Be concise. Engineers don't need filler. Lead with the answer.
 - Tailor difficulty and focus to the student's profile when available.
 
@@ -229,7 +247,7 @@ export function buildExplanationPrompt(
   correctAnswer: string,
   codeRefs: string[],
   contexts: RetrievedContext[],
-  confidence: RetrievalConfidence = "none"
+  confidence: RetrievalConfidence = "none",
 ): string {
   const contextBlock = formatRetrievedContext(contexts);
   const verifiedFormulas = buildVerifiedFormulaBlock();
@@ -265,7 +283,7 @@ export function buildHintPrompt(
   questionText: string,
   level: 1 | 2 | 3,
   contexts: RetrievedContext[],
-  confidence: RetrievalConfidence = "none"
+  confidence: RetrievalConfidence = "none",
 ): string {
   const contextBlock = formatRetrievedContext(contexts);
   const verifiedFormulas = buildVerifiedFormulaBlock();
@@ -300,7 +318,7 @@ export function buildQuestionGenerationPrompt(
   subtopic: string,
   difficulty: string,
   contexts: RetrievedContext[],
-  confidence: RetrievalConfidence = "medium"
+  confidence: RetrievalConfidence = "medium",
 ): string {
   const contextBlock = formatRetrievedContext(contexts);
   const verifiedFormulas = buildVerifiedFormulaBlock();

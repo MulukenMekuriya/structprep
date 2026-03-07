@@ -21,17 +21,36 @@ import {
   Target,
   Flame,
   X,
+  FileText,
 } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 import { VoiceControls, MicButton } from "@/components/tutor/voice-controls";
-import { TOPIC_SHORT_LABELS, TOPIC_SUBTOPICS, NCEES_TOPICS, type NCEESTopic } from "@/types";
+import {
+  ImageUploadButton,
+  ImagePreviewBar,
+  fileToBase64,
+  type ImageAttachment,
+} from "@/components/tutor/image-upload";
+import {
+  TOPIC_SHORT_LABELS,
+  TOPIC_SUBTOPICS,
+  NCEES_TOPICS,
+  type NCEESTopic,
+} from "@/types";
 
 type StudyMode = "teach" | "quiz" | "review" | "chat";
+
+interface MessageImage {
+  base64: string;
+  type: string;
+  preview?: string; // for display only
+}
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  images?: MessageImage[];
   citations?: { source: string; section: string; page: number }[];
 }
 
@@ -64,7 +83,8 @@ const STUDY_MODES: {
   {
     id: "teach",
     label: "Teach Me",
-    description: "Deep-dive into a topic with code references, worked examples, and exam tips",
+    description:
+      "Deep-dive into a topic with code references, worked examples, and exam tips",
     icon: <GraduationCap className="h-6 w-6 text-white" />,
     gradient: "from-blue-500/8 to-indigo-500/5",
     iconGradient: "from-blue-500 to-indigo-600",
@@ -110,6 +130,7 @@ export default function TutorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [studentCtx, setStudentCtx] = useState<StudentContext | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
+  const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const userIsScrolledUp = useRef(false);
 
@@ -153,7 +174,10 @@ export default function TutorPage() {
     if (messages.length > prevMessageCount.current) {
       // New message was added — scroll to the start of the last message
       prevMessageCount.current = messages.length;
-      lastMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      lastMessageRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
     // Don't auto-scroll on content updates (streaming) — let the user read
   }, [messages]);
@@ -195,7 +219,7 @@ export default function TutorPage() {
             id: crypto.randomUUID(),
             role: m.role,
             content: m.content,
-          }))
+          })),
         );
       }
     } catch {
@@ -241,17 +265,29 @@ export default function TutorPage() {
     }
   }
 
-  async function sendMessageDirect(content: string) {
-    if (!content.trim() || loading) return;
+  async function sendMessageDirect(
+    content: string,
+    images?: ImageAttachment[],
+  ) {
+    const currentImages = images || attachedImages;
+    if ((!content.trim() && currentImages.length === 0) || loading) return;
+
+    const messageImages: MessageImage[] = currentImages.map((img) => ({
+      base64: img.base64,
+      type: img.type,
+      preview: img.preview,
+    }));
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
       content: content.trim(),
+      images: messageImages.length > 0 ? messageImages : undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setAttachedImages([]);
     setLoading(true);
 
     try {
@@ -260,7 +296,9 @@ export default function TutorPage() {
         const sessionRes = await fetch("/api/tutor/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: content.trim().slice(0, 50) }),
+          body: JSON.stringify({
+            title: content.trim().slice(0, 50) || "Image question",
+          }),
         });
         const sessionData = await sessionRes.json();
         sid = sessionData.id;
@@ -274,6 +312,13 @@ export default function TutorPage() {
           content: content.trim(),
           mode: studyMode || "chat",
           topic: selectedTopic,
+          images:
+            messageImages.length > 0
+              ? messageImages.map((img) => ({
+                  base64: img.base64,
+                  type: img.type,
+                }))
+              : undefined,
         }),
       });
 
@@ -301,12 +346,12 @@ export default function TutorPage() {
           let displayContent = assistantContent;
           let citations: Message["citations"] = undefined;
           const citationMatch = assistantContent.match(
-            /\n<!--CITATIONS:(.*?)-->/
+            /\n<!--CITATIONS:(.*?)-->/,
           );
           if (citationMatch) {
             displayContent = assistantContent.replace(
               /\n<!--CITATIONS:.*?-->/,
-              ""
+              "",
             );
             try {
               citations = JSON.parse(citationMatch[1]);
@@ -319,8 +364,8 @@ export default function TutorPage() {
             prev.map((m) =>
               m.id === assistantId
                 ? { ...m, content: displayContent, citations }
-                : m
-            )
+                : m,
+            ),
           );
         }
       }
@@ -350,6 +395,35 @@ export default function TutorPage() {
     }
   }
 
+  async function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+
+    if (imageFiles.length === 0) return;
+
+    e.preventDefault(); // prevent pasting image as text
+    const attachments: ImageAttachment[] = [];
+    for (const file of imageFiles) {
+      const base64 = await fileToBase64(file);
+      attachments.push({
+        id: crypto.randomUUID(),
+        file,
+        preview: URL.createObjectURL(file),
+        base64,
+        type: file.type,
+      });
+    }
+    setAttachedImages((prev) => [...prev, ...attachments]);
+  }
+
   // ---- RENDER ----
 
   // No mode selected: show landing screen
@@ -365,18 +439,21 @@ export default function TutorPage() {
                   <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">AI Tutor</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    AI Tutor
+                  </h1>
                   <p className="text-sm text-muted-foreground">
                     Your personal PE Structures exam coach
                   </p>
                 </div>
               </div>
-              {studentCtx?.daysUntilExam !== null && studentCtx?.daysUntilExam !== undefined && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-3 py-1 text-xs font-medium ring-1 ring-primary/10">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  {studentCtx.daysUntilExam} days until exam
-                </div>
-              )}
+              {studentCtx?.daysUntilExam !== null &&
+                studentCtx?.daysUntilExam !== undefined && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-3 py-1 text-xs font-medium ring-1 ring-primary/10">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                    {studentCtx.daysUntilExam} days until exam
+                  </div>
+                )}
             </div>
             {pastSessions.length > 0 && (
               <Button
@@ -397,7 +474,12 @@ export default function TutorPage() {
           <Card className="mb-6 overflow-hidden">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <p className="text-sm font-medium">Recent Conversations</p>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setShowHistory(false)}
+              >
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -427,18 +509,32 @@ export default function TutorPage() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 shadow-md shadow-orange-500/15">
                   <Flame className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Streak</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Streak
+                </span>
               </div>
-              <p className="text-2xl font-bold">{studentCtx.studyStreak}<span className="text-sm font-normal text-muted-foreground ml-1">days</span></p>
+              <p className="text-2xl font-bold">
+                {studentCtx.studyStreak}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  days
+                </span>
+              </p>
             </div>
             <div className="rounded-xl border bg-card p-4 hover-lift">
               <div className="flex items-center gap-2 mb-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/15">
                   <Target className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Accuracy</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Accuracy
+                </span>
               </div>
-              <p className="text-2xl font-bold">{studentCtx.overallAccuracy}%<span className="text-sm font-normal text-muted-foreground ml-1">({studentCtx.totalAttempted} Qs)</span></p>
+              <p className="text-2xl font-bold">
+                {studentCtx.overallAccuracy}%
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  ({studentCtx.totalAttempted} Qs)
+                </span>
+              </p>
             </div>
             {studentCtx.weakTopics.length > 0 ? (
               <div className="rounded-xl border bg-card p-4 hover-lift">
@@ -446,7 +542,9 @@ export default function TutorPage() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/15">
                     <AlertCircle className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Focus</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Focus
+                  </span>
                 </div>
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 leading-tight">
                   {studentCtx.weakTopics.map((w) => w.label).join(", ")}
@@ -458,7 +556,9 @@ export default function TutorPage() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-md shadow-blue-500/15">
                     <BookOpen className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </span>
                 </div>
                 <p className="text-sm font-semibold leading-tight">On track</p>
               </div>
@@ -468,7 +568,9 @@ export default function TutorPage() {
 
         {/* Study mode section */}
         <div className="mb-8">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Choose your study mode</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            Choose your study mode
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {STUDY_MODES.map((mode) => (
               <button
@@ -477,12 +579,18 @@ export default function TutorPage() {
                 onClick={() => startNewSession(mode.id)}
               >
                 <div className="flex items-start gap-4">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${mode.iconGradient} shadow-md ${mode.shadow} group-hover:shadow-lg transition-shadow`}>
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${mode.iconGradient} shadow-md ${mode.shadow} group-hover:shadow-lg transition-shadow`}
+                  >
                     {mode.icon}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-[15px] mb-0.5 group-hover:text-primary transition-colors">{mode.label}</h3>
-                    <p className="text-[13px] text-muted-foreground leading-snug">{mode.description}</p>
+                    <h3 className="font-semibold text-[15px] mb-0.5 group-hover:text-primary transition-colors">
+                      {mode.label}
+                    </h3>
+                    <p className="text-[13px] text-muted-foreground leading-snug">
+                      {mode.description}
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
@@ -494,7 +602,9 @@ export default function TutorPage() {
         {/* Weak areas */}
         {studentCtx && studentCtx.weakTopics.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recommended focus areas</h2>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Recommended focus areas
+            </h2>
             <div className="flex flex-wrap gap-2">
               {studentCtx.weakTopics.map((w) => (
                 <button
@@ -507,7 +617,9 @@ export default function TutorPage() {
                 >
                   <AlertCircle className="h-3.5 w-3.5" />
                   {w.label}
-                  <span className="text-amber-600/60 dark:text-amber-400/60">{w.accuracy}%</span>
+                  <span className="text-amber-600/60 dark:text-amber-400/60">
+                    {w.accuracy}%
+                  </span>
                   <ChevronRight className="h-3 w-3 ml-0.5" />
                 </button>
               ))}
@@ -517,13 +629,27 @@ export default function TutorPage() {
 
         {/* Quick start */}
         <div>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick start</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Quick start
+          </h2>
           <div className="flex flex-wrap gap-2">
             {[
-              { text: "Teach me LRFD load combinations", icon: <GraduationCap className="h-3.5 w-3.5" /> },
-              { text: "Quiz me on steel beam design", icon: <Brain className="h-3.5 w-3.5" /> },
-              { text: "Explain punching shear", icon: <MessageSquare className="h-3.5 w-3.5" /> },
-              { text: "Walk me through a column design", icon: <GraduationCap className="h-3.5 w-3.5" /> },
+              {
+                text: "Teach me LRFD load combinations",
+                icon: <GraduationCap className="h-3.5 w-3.5" />,
+              },
+              {
+                text: "Quiz me on steel beam design",
+                icon: <Brain className="h-3.5 w-3.5" />,
+              },
+              {
+                text: "Explain punching shear",
+                icon: <MessageSquare className="h-3.5 w-3.5" />,
+              },
+              {
+                text: "Walk me through a column design",
+                icon: <GraduationCap className="h-3.5 w-3.5" />,
+              },
             ].map((suggestion) => (
               <button
                 key={suggestion.text}
@@ -551,27 +677,44 @@ export default function TutorPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${currentMode.iconGradient} shadow-md ${currentMode.shadow}`}>
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${currentMode.iconGradient} shadow-md ${currentMode.shadow}`}
+            >
               {currentMode.icon}
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">{currentMode.label}</h1>
-              <p className="text-sm text-muted-foreground">{currentMode.description}</p>
+              <h1 className="text-xl font-bold tracking-tight">
+                {currentMode.label}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {currentMode.description}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={newChat}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={newChat}
+          >
             <X className="h-4 w-4 mr-1" />
             Back
           </Button>
         </div>
 
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Select a topic</h2>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+          Select a topic
+        </h2>
 
         <div className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           {NCEES_TOPICS.map((topic) => {
             const subtopics = TOPIC_SUBTOPICS[topic];
-            const isWeak = studentCtx?.weakTopics.some((w) => w.topic === topic);
-            const weakData = studentCtx?.weakTopics.find((w) => w.topic === topic);
+            const isWeak = studentCtx?.weakTopics.some(
+              (w) => w.topic === topic,
+            );
+            const weakData = studentCtx?.weakTopics.find(
+              (w) => w.topic === topic,
+            );
 
             return (
               <div key={topic} className="rounded-xl border overflow-hidden">
@@ -585,7 +728,9 @@ export default function TutorPage() {
                         <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
                       </span>
                     )}
-                    <span className="font-medium text-sm">{TOPIC_SHORT_LABELS[topic]}</span>
+                    <span className="font-medium text-sm">
+                      {TOPIC_SHORT_LABELS[topic]}
+                    </span>
                     {weakData && (
                       <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
                         {weakData.accuracy}% accuracy
@@ -618,12 +763,14 @@ export default function TutorPage() {
 
   // Active chat session
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 6rem)" }}>
+    <div className="absolute inset-0 flex flex-col bg-background">
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 md:px-6 lg:px-8 border-b shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            {STUDY_MODES.find((m) => m.id === studyMode)?.icon || <Bot className="h-4 w-4" />}
+            {STUDY_MODES.find((m) => m.id === studyMode)?.icon || (
+              <Bot className="h-4 w-4" />
+            )}
           </div>
           <div>
             <h2 className="font-semibold text-sm">
@@ -631,7 +778,8 @@ export default function TutorPage() {
             </h2>
             {selectedTopic && (
               <p className="text-xs text-muted-foreground">
-                {TOPIC_SHORT_LABELS[selectedTopic as NCEESTopic] || selectedTopic}
+                {TOPIC_SHORT_LABELS[selectedTopic as NCEESTopic] ||
+                  selectedTopic}
               </p>
             )}
           </div>
@@ -645,7 +793,10 @@ export default function TutorPage() {
       </div>
 
       {/* Chat Messages */}
-      <Card ref={chatContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4">
+      <div
+        ref={chatContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 lg:px-8 py-4"
+      >
         <div className="space-y-4">
           {messages.map((message, idx) => (
             <div
@@ -678,9 +829,38 @@ export default function TutorPage() {
                       )
                     )
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap">
-                      {message.content}
-                    </p>
+                    <div className="space-y-2">
+                      {message.images && message.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {message.images.map((img, imgIdx) =>
+                            img.preview || img.type.startsWith("image/") ? (
+                              <img
+                                key={imgIdx}
+                                src={
+                                  img.preview ||
+                                  `data:${img.type};base64,${img.base64}`
+                                }
+                                alt="Uploaded"
+                                className="max-h-48 rounded-md border border-primary-foreground/20"
+                              />
+                            ) : (
+                              <div
+                                key={imgIdx}
+                                className="flex items-center gap-1.5 rounded-md bg-primary-foreground/10 px-2 py-1 text-xs"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                PDF document
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      )}
+                      {message.content && (
+                        <p className="text-sm whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
                 {message.citations && message.citations.length > 0 && (
@@ -688,7 +868,10 @@ export default function TutorPage() {
                     <BookOpen className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
                     {message.citations.map((c, ci) => {
                       const label = `${c.source}${c.section !== "General" ? ` ${c.section}` : ""}${c.page > 0 ? ` p.${c.page}` : ""}`;
-                      const searchQuery = c.section !== "General" ? `${c.source} ${c.section}` : c.source;
+                      const searchQuery =
+                        c.section !== "General"
+                          ? `${c.source} ${c.section}`
+                          : c.source;
                       return (
                         <Badge
                           key={ci}
@@ -697,7 +880,7 @@ export default function TutorPage() {
                           onClick={() =>
                             window.open(
                               `/references?q=${encodeURIComponent(searchQuery)}`,
-                              "_blank"
+                              "_blank",
                             )
                           }
                         >
@@ -707,16 +890,18 @@ export default function TutorPage() {
                     })}
                   </div>
                 )}
-                {message.role === "assistant" && message.content && !loading && (
-                  <div className="px-1">
-                    <VoiceControls
-                      messageContent={message.content}
-                      onTranscript={setInput}
-                      onSendTranscript={sendMessageDirect}
-                      disabled={loading}
-                    />
-                  </div>
-                )}
+                {message.role === "assistant" &&
+                  message.content &&
+                  !loading && (
+                    <div className="px-1">
+                      <VoiceControls
+                        messageContent={message.content}
+                        onTranscript={setInput}
+                        onSendTranscript={sendMessageDirect}
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
               </div>
               {message.role === "user" && (
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -727,41 +912,56 @@ export default function TutorPage() {
           ))}
           <div />
         </div>
-      </Card>
+      </div>
 
       {/* Input */}
-      <div className="mt-4 flex gap-2 shrink-0">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            studyMode === "quiz"
-              ? "Type or speak your answer..."
-              : studyMode === "teach"
-                ? "Ask a follow-up or tap the mic..."
-                : "Ask about structural engineering..."
+      <div className="shrink-0 border-t bg-background px-4 md:px-6 lg:px-8 pt-3 pb-3 space-y-1">
+        <ImagePreviewBar
+          images={attachedImages}
+          onRemove={(id) =>
+            setAttachedImages((prev) => prev.filter((img) => img.id !== id))
           }
-          className="min-h-[60px] resize-none"
-          disabled={loading}
         />
-        <MicButton
-          onTranscript={setInput}
-          onSendTranscript={sendMessageDirect}
-          disabled={loading}
-        />
-        <Button
-          onClick={sendMessage}
-          disabled={!input.trim() || loading}
-          size="icon"
-          className="h-[60px] w-[60px] shrink-0"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <ImageUploadButton
+            onImagesAdded={(imgs) =>
+              setAttachedImages((prev) => [...prev, ...imgs])
+            }
+            disabled={loading}
+          />
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            placeholder={
+              studyMode === "quiz"
+                ? "Type or speak your answer..."
+                : studyMode === "teach"
+                  ? "Ask a follow-up or tap the mic..."
+                  : "Upload a screenshot and ask about it, or type a question..."
+            }
+            className="min-h-[60px] resize-none"
+            disabled={loading}
+          />
+          <MicButton
+            onTranscript={setInput}
+            onSendTranscript={sendMessageDirect}
+            disabled={loading}
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={(!input.trim() && attachedImages.length === 0) || loading}
+            size="icon"
+            className="h-[60px] w-[60px] shrink-0"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-bold tracking-tight">StructPrep</span>
           </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 lg:p-8 dot-grid-bg">{children}</div>
+        <div className="relative flex-1 min-h-0 overflow-auto p-4 md:p-6 lg:p-8 dot-grid-bg">
+          {children}
+        </div>
       </main>
     </SidebarProvider>
   );

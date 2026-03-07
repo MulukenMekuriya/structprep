@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAIClient, AI_MODEL } from "@/lib/ai/client";
 import { buildExplanationPrompt } from "@/lib/ai/prompts";
 import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 
@@ -56,8 +56,8 @@ export async function POST(
     confidence = "none";
   }
 
-  // Generate explanation via Claude
-  const anthropic = getAnthropicClient();
+  // Generate explanation via AI
+  const ai = getAIClient();
 
   const correctOption = (question.options as { id: string; text: string }[]).find(
     (o) => o.id === question.correct_option_id
@@ -72,14 +72,13 @@ export async function POST(
     confidence
   );
 
-  const response = await anthropic.messages.create({
+  const response = await ai.chat.completions.create({
     model: AI_MODEL,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const explanation =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  const explanation = response.choices[0]?.message?.content ?? "";
 
   // Cache the explanation
   await supabase.from("sp_question_explanations").insert({

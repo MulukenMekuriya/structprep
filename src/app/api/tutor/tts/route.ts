@@ -63,13 +63,11 @@ export async function POST(request: NextRequest) {
     return new Response("TTS generation failed", { status: 502 });
   }
 
-  // Buffer the full response to avoid streaming issues with Audio element
-  const audioBuffer = await ttsRes.arrayBuffer();
-
-  return new Response(audioBuffer, {
+  // Stream through directly — lets the client start playback faster
+  return new Response(ttsRes.body, {
     headers: {
       "Content-Type": "audio/mpeg",
-      "Content-Length": audioBuffer.byteLength.toString(),
+      "Transfer-Encoding": "chunked",
       "Cache-Control": "private, max-age=3600",
     },
   });

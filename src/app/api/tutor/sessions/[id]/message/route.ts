@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAIClient, AI_MODEL, AI_VISION_MODEL } from "@/lib/ai/client";
 import { buildTutorSystemPrompt, type TutorContext } from "@/lib/ai/prompts";
 import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 import { rewriteQueryForRetrieval } from "@/lib/ai/query-rewriter";
@@ -22,23 +22,25 @@ export async function POST(
   }
 
   const body = await request.json();
-  const userMessage = body.content;
+  const userMessage: string = body.content || "";
   const studyMode = body.mode || "chat";
   const studyTopic = body.topic || undefined;
+  const userImages: { base64: string; type: string }[] | undefined = body.images;
+  const hasImages = userImages && userImages.length > 0;
 
-  if (!userMessage) {
-    return new Response("Message content required", { status: 400 });
+  if (!userMessage && !hasImages) {
+    return new Response("Message content or images required", { status: 400 });
   }
 
-  // Save user message
+  // Save user message (text only — images are ephemeral)
   await supabase.from("sp_tutor_messages").insert({
     session_id: sessionId,
     role: "user",
-    content: userMessage,
+    content: userMessage || (hasImages ? "[Uploaded image(s)]" : ""),
     tokens_used: 0,
   });
 
-  // Get conversation history (needed for query rewriting + Claude context)
+  // Get conversation history
   const { data: history } = await supabase
     .from("sp_tutor_messages")
     .select("role, content")
@@ -51,8 +53,9 @@ export async function POST(
     content: m.content,
   }));
 
-  // --- MULTI-TURN RAG: Rewrite query + fetch context in parallel ---
-  const [rewrittenQuery, studentContext, refsResult] = await Promise.all([
+  // --- MULTI-TURN RAG: Run retrieval in parallel with query rewrite for speed ---
+  // Start RAG with original query immediately; if rewrite finishes and differs, use that instead
+  const [rewrittenQuery, studentContext, refsResult, originalRagResult] = await Promise.all([
     rewriteQueryForRetrieval(userMessage, messages.slice(0, -1)).catch(
       () => userMessage
     ),
@@ -61,29 +64,45 @@ export async function POST(
       .from("sp_reference_materials")
       .select("title")
       .eq("processing_status", "ready"),
+    retrieveContext(userMessage, 5).catch(() => ({
+      contexts: [] as Awaited<ReturnType<typeof retrieveContext>>["contexts"],
+      confidence: "none" as RetrievalConfidence,
+    })),
   ]);
 
   const refTitles = (refsResult.data || []).map(
     (r: { title: string }) => r.title
   );
 
-  // Retrieve context using the rewritten (context-aware) query
-  let contexts: Awaited<ReturnType<typeof retrieveContext>>["contexts"] = [];
-  let confidence: RetrievalConfidence = "none";
-  try {
-    const result = await retrieveContext(rewrittenQuery, 10);
-    contexts = result.contexts;
-    confidence = result.confidence;
-  } catch {
-    contexts = [];
-    confidence = "none";
+  // If the rewritten query differs meaningfully, do a quick retrieval with it and merge
+  let contexts = originalRagResult.contexts;
+  let confidence = originalRagResult.confidence;
+  if (rewrittenQuery !== userMessage && rewrittenQuery.length > 3) {
+    try {
+      const rewrittenRag = await retrieveContext(rewrittenQuery, 5);
+      // Merge: deduplicate by chunk id, prefer higher scores
+      const seen = new Set(contexts.map((c) => c.chunk.id));
+      for (const ctx of rewrittenRag.contexts) {
+        if (!seen.has(ctx.chunk.id)) {
+          contexts.push(ctx);
+          seen.add(ctx.chunk.id);
+        }
+      }
+      // Keep top 5 by score
+      contexts = contexts.sort((a, b) => b.score - a.score).slice(0, 5);
+      if (rewrittenRag.confidence === "high" || (rewrittenRag.confidence === "medium" && confidence !== "high")) {
+        confidence = rewrittenRag.confidence;
+      }
+    } catch {
+      // Original results are fine
+    }
   }
 
   // Build system prompt
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return new Response("ANTHROPIC_API_KEY is not configured", { status: 500 });
+  if (!process.env.QWEN_API_KEY) {
+    return new Response("QWEN_API_KEY is not configured", { status: 500 });
   }
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
   const systemPrompt = buildTutorSystemPrompt(
     contexts,
     refTitles,
@@ -91,13 +110,56 @@ export async function POST(
     confidence
   );
 
-  // --- STREAM response from Claude ---
-  const stream = anthropic.messages.stream({
-    model: AI_MODEL,
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages,
-  });
+  // --- Build messages array, with multimodal content for images ---
+  type ChatMessage = { role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> };
+  const chatMessages: ChatMessage[] = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  // Add conversation history (text-only from DB)
+  for (const m of messages.slice(0, -1)) {
+    chatMessages.push({ role: m.role, content: m.content });
+  }
+
+  // Build the current user message (potentially multimodal)
+  if (hasImages) {
+    const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+
+    // Add images first so the model sees them
+    for (const img of userImages!) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: `data:${img.type};base64,${img.base64}` },
+      });
+    }
+
+    // Add text instruction
+    const textContent = userMessage
+      || "Please look at this image carefully. If there are any circled, highlighted, or marked sections, focus on explaining those specific parts. Provide a detailed structural engineering explanation.";
+    contentParts.push({ type: "text", text: textContent });
+
+    chatMessages.push({ role: "user", content: contentParts });
+  } else {
+    chatMessages.push({ role: "user", content: userMessage });
+  }
+
+  // Use vision model when images are present
+  const modelToUse = hasImages ? AI_VISION_MODEL : AI_MODEL;
+
+  // --- STREAM response from Qwen ---
+  let stream;
+  try {
+    stream = await ai.chat.completions.create({
+      model: modelToUse,
+      max_tokens: 16384,
+      stream: true,
+      messages: chatMessages as Parameters<typeof ai.chat.completions.create>[0]["messages"],
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI model error";
+    console.error("Qwen API error:", msg);
+    return new Response(`AI model error: ${msg}`, { status: 502 });
+  }
 
   const encoder = new TextEncoder();
   let fullResponse = "";
@@ -105,12 +167,9 @@ export async function POST(
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            const text = event.delta.text;
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content;
+          if (text) {
             fullResponse += text;
             controller.enqueue(encoder.encode(text));
           }
@@ -128,74 +187,36 @@ export async function POST(
           );
         }
 
-        // --- POST-STREAM VERIFICATION: Check math in background ---
-        // Run verification and save concurrently
-        const [verification] = await Promise.all([
-          verifyTutorResponse(fullResponse).catch(() => ({
-            verified: true,
-            errors: [],
-            checksPerformed: 0,
+        // Save assistant message (don't block stream close)
+        supabase.from("sp_tutor_messages").insert({
+          session_id: sessionId,
+          role: "assistant",
+          content: fullResponse,
+          retrieved_chunks: contexts.map((c) => ({
+            source: c.source_title,
+            section: c.chunk.section_ref,
+            page: c.chunk.page_number,
           })),
-          // Save assistant message
-          (async () => {
+          tokens_used: fullResponse.length / 4,
+        }).then(() =>
+          supabase.rpc("sp_increment_message_count", {
+            session_id_param: sessionId,
+          })
+        ).catch(() => {});
+
+        // Fire-and-forget: verify math in background (no longer blocks the stream)
+        verifyTutorResponse(fullResponse).then(async (verification) => {
+          if (!verification.verified && verification.errors.some((e) => e.severity === "critical")) {
+            const correctionNote = buildCorrectionPrompt(verification.errors);
+            // Save correction as a follow-up message (user sees it on next load)
             await supabase.from("sp_tutor_messages").insert({
               session_id: sessionId,
               role: "assistant",
-              content: fullResponse,
-              retrieved_chunks: contexts.map((c) => ({
-                source: c.source_title,
-                section: c.chunk.section_ref,
-                page: c.chunk.page_number,
-              })),
-              tokens_used: fullResponse.length / 4,
-            });
-            await supabase.rpc("sp_increment_message_count", {
-              session_id_param: sessionId,
-            });
-          })(),
-        ]);
-
-        // If verification found critical errors, stream a correction inline
-        if (!verification.verified && verification.errors.some((e) => e.severity === "critical")) {
-          const correctionNote = buildCorrectionPrompt(verification.errors);
-
-          const correctionStream = anthropic.messages.stream({
-            model: AI_MODEL,
-            max_tokens: 2048,
-            system: systemPrompt,
-            messages: [
-              ...messages,
-              { role: "assistant", content: fullResponse },
-              { role: "user", content: correctionNote },
-            ],
-          });
-
-          controller.enqueue(
-            encoder.encode("\n\n---\n\n**Correction:** ")
-          );
-
-          let correctionText = "";
-          for await (const event of correctionStream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              const text = event.delta.text;
-              correctionText += text;
-              controller.enqueue(encoder.encode(text));
-            }
-          }
-
-          // Save correction as a separate message
-          if (correctionText) {
-            await supabase.from("sp_tutor_messages").insert({
-              session_id: sessionId,
-              role: "assistant",
-              content: `**Correction:** ${correctionText}`,
-              tokens_used: correctionText.length / 4,
+              content: `**Correction:** ${correctionNote}`,
+              tokens_used: correctionNote.length / 4,
             });
           }
-        }
+        }).catch(() => {});
 
         controller.close();
       } catch (error) {

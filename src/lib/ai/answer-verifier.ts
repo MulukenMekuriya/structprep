@@ -5,7 +5,7 @@
  * the calculator, then flags any inconsistencies.
  */
 
-import { getAnthropicClient } from "./client";
+import { getAIClient, AI_MODEL } from "./client";
 import { evaluateExpression, type CalculatorResult } from "./calculator";
 
 export interface VerificationResult {
@@ -23,7 +23,7 @@ export interface VerificationError {
 
 /**
  * Extract calculation claims from a tutor response and verify them.
- * Uses Claude Haiku to extract the math expressions, then evaluates each one.
+ * Uses the AI model to extract the math expressions, then evaluates each one.
  */
 export async function verifyTutorResponse(
   tutorResponse: string
@@ -33,13 +33,15 @@ export async function verifyTutorResponse(
     return { verified: true, errors: [], checksPerformed: 0 };
   }
 
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
 
-  // Use Haiku to extract calculation claims
-  const extractionResponse = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
+  const extractionResponse = await ai.chat.completions.create({
+    model: AI_MODEL,
     max_tokens: 1000,
-    system: `Extract all numerical calculations from the tutor's response. For each calculation, provide:
+    messages: [
+      {
+        role: "system",
+        content: `Extract all numerical calculations from the tutor's response. For each calculation, provide:
 1. The expression (using standard math notation the calculator can evaluate)
 2. The claimed result from the text
 
@@ -53,7 +55,7 @@ Rules for expressions:
 - Use PI for π
 - Expand any substituted values (e.g., if φMn = 0.9 × 60 × 3.0 × 18.5, write "0.9 * 60 * 3.0 * 18.5")
 - Skip unit conversions and purely symbolic expressions`,
-    messages: [
+      },
       {
         role: "user",
         content: `Extract verifiable calculations from this tutor response:\n\n${tutorResponse.slice(0, 3000)}`,
@@ -61,10 +63,7 @@ Rules for expressions:
     ],
   });
 
-  const extractedText =
-    extractionResponse.content[0].type === "text"
-      ? extractionResponse.content[0].text.trim()
-      : "[]";
+  const extractedText = extractionResponse.choices[0]?.message?.content?.trim() ?? "[]";
 
   let claims: { expression: string; claimed_result: string; description: string }[];
   try {
@@ -78,7 +77,6 @@ Rules for expressions:
   const errors: VerificationError[] = [];
 
   for (const claim of claims.slice(0, 10)) {
-    // Cap at 10 checks
     try {
       const result: CalculatorResult = evaluateExpression({
         expression: claim.expression,
@@ -86,14 +84,13 @@ Rules for expressions:
       });
 
       const claimedNum = parseClaimedResult(claim.claimed_result);
-      if (claimedNum === null) continue; // can't parse, skip
+      if (claimedNum === null) continue;
 
       const relativeError =
         Math.abs(claimedNum) > 0.001
           ? Math.abs(result.result - claimedNum) / Math.abs(claimedNum)
           : Math.abs(result.result - claimedNum);
 
-      // Allow 1% tolerance for rounding
       if (relativeError > 0.01) {
         errors.push({
           claim: `${claim.expression} = ${claim.claimed_result}`,
@@ -103,7 +100,6 @@ Rules for expressions:
         });
       }
     } catch {
-      // Expression couldn't be evaluated — skip, don't count as error
       continue;
     }
   }
@@ -115,10 +111,6 @@ Rules for expressions:
   };
 }
 
-/**
- * Build a correction prompt when verification finds errors.
- * This is appended as a follow-up user message to get Claude to fix its math.
- */
 export function buildCorrectionPrompt(errors: VerificationError[]): string {
   const errorList = errors
     .map(
@@ -135,7 +127,6 @@ Please correct these calculations in your response. Show the corrected work clea
 }
 
 function containsCalculations(text: string): boolean {
-  // Check for common calculation patterns
   return (
     /\d+\s*[×*]\s*\d+/.test(text) ||
     /=\s*[\d.]+\s*(kip|lb|kN|psi|ksi|ft|in|mm|m|k\b)/i.test(text) ||
@@ -145,7 +136,6 @@ function containsCalculations(text: string): boolean {
 }
 
 function parseClaimedResult(claimed: string): number | null {
-  // Strip units and formatting
   const cleaned = claimed
     .replace(/[,]/g, "")
     .replace(/\s*(kip|lb|kN|psi|ksi|ft|in|mm|m|k|plf|klf|psf|ksf|ft-kip|in-kip|kip-ft|kip-in|MPa|GPa)\b.*/i, "")
