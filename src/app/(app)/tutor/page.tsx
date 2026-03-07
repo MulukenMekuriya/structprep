@@ -70,7 +70,6 @@ export default function TutorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [studentCtx, setStudentCtx] = useState<StudentContext | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const userIsScrolledUp = useRef(false);
 
@@ -93,7 +92,10 @@ export default function TutorPage() {
     load();
   }, []);
 
-  // Scroll tracking
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(0);
+
+  // Scroll tracking: detect if user has manually scrolled up
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
@@ -105,10 +107,15 @@ export default function TutorPage() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // When a NEW message is added (not updated), scroll to its top
+  // so the user can start reading while it streams
   useEffect(() => {
-    if (!userIsScrolledUp.current) {
-      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > prevMessageCount.current) {
+      // New message was added — scroll to the start of the last message
+      prevMessageCount.current = messages.length;
+      lastMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+    // Don't auto-scroll on content updates (streaming) — let the user read
   }, [messages]);
 
   // Start a new session with a mode
@@ -549,9 +556,10 @@ export default function TutorPage() {
       {/* Chat Messages */}
       <Card ref={chatContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="space-y-4">
-          {messages.map((message) => (
+          {messages.map((message, idx) => (
             <div
               key={message.id}
+              ref={idx === messages.length - 1 ? lastMessageRef : undefined}
               className={`flex gap-3 ${
                 message.role === "user" ? "justify-end" : ""
               }`}
@@ -626,7 +634,7 @@ export default function TutorPage() {
               )}
             </div>
           ))}
-          <div ref={scrollRef} />
+          <div />
         </div>
       </Card>
 

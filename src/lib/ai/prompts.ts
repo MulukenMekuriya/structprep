@@ -1,6 +1,7 @@
 import type { RetrievedContext } from "@/types";
 import type { RetrievalConfidence } from "@/lib/rag/retriever";
 import { FORMULA_SHEETS, type FormulaCategory } from "@/lib/formulas";
+import { SOLUTION_TEMPLATES } from "@/lib/data/solution-templates";
 
 /**
  * Build confidence-tiered grounding instructions.
@@ -47,6 +48,32 @@ function formatRetrievedContext(contexts: RetrievedContext[]): string {
         `[SOURCE ${i + 1}: ${ctx.source_title}, ${ctx.chunk.section_ref || "General"}, p.${ctx.chunk.page_number}]\n${ctx.chunk.chunk_text}`
     )
     .join("\n\n");
+}
+
+/** Build solution template block for teach mode based on the study topic. */
+function buildSolutionTemplateBlock(studyTopic?: string): string {
+  if (!studyTopic) return "";
+  const kw = studyTopic.toLowerCase();
+  const matches = SOLUTION_TEMPLATES.filter(
+    (t) =>
+      t.topic.toLowerCase().includes(kw) ||
+      t.subtopic.toLowerCase().includes(kw) ||
+      t.title.toLowerCase().includes(kw)
+  );
+  if (matches.length === 0) return "";
+
+  const blocks = matches.map((t) =>
+    `### ${t.title} (${t.subtopic})
+Steps:
+${t.steps.map((s, i) => `  ${i + 1}. ${s}`).join("\n")}
+Key codes: ${t.keyCodes.join(", ")}
+Common mistakes: ${t.commonMistakes.join("; ")}
+Typical time: ${t.timeEstimate}`
+  );
+
+  return `\n--- SOLUTION METHODOLOGY TEMPLATES (teach these step-by-step workflows) ---
+${blocks.join("\n\n")}
+--- END TEMPLATES ---\n`;
 }
 
 /** Serialize all verified formulas into a compact reference block for the system prompt. */
@@ -139,13 +166,16 @@ You are in open conversation mode. Answer any structural engineering question.
   };
 
   const verifiedFormulas = buildVerifiedFormulaBlock();
+  const solutionTemplates = mode === "teach" || mode === "quiz"
+    ? buildSolutionTemplateBlock(tutorContext?.studyTopic || "")
+    : "";
 
   const confidenceBlock = buildConfidenceBlock(confidence);
 
   return `You are an expert PE Civil: Structures exam tutor — the student's personal coach for passing the NCEES PE exam. You are knowledgeable, encouraging, and laser-focused on exam readiness.
 ${refList}${personalBlock}
 ${modeInstructions[mode]}
-
+${solutionTemplates}
 --- VERIFIED FORMULA REFERENCE (use these EXACTLY — do NOT modify or omit terms) ---
 ${verifiedFormulas}
 --- END VERIFIED FORMULAS ---
@@ -185,7 +215,12 @@ CORE RULES (all modes):
   - Use viewBox for scaling, stroke="currentColor", transparent fill
   - Label forces, dimensions, reactions with <text> elements
 - Be concise. Engineers don't need filler. Lead with the answer.
-- Tailor difficulty and focus to the student's profile when available.`;
+- Tailor difficulty and focus to the student's profile when available.
+
+CALCULATION ACCURACY:
+- Show every calculation step-by-step: write the formula, substitute values, then compute.
+- For multi-step problems, show each intermediate result explicitly.
+- Double-check arithmetic — wrong numbers on the PE exam cause failures.`;
 }
 
 export function buildExplanationPrompt(

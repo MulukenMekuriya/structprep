@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Wand2, FileText, Loader2, CheckCircle2, AlertCircle, X, Database, RefreshCw } from "lucide-react";
+import { Upload, Wand2, FileText, Loader2, CheckCircle2, AlertCircle, X, Database, RefreshCw, PenLine, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NCEES_TOPICS, TOPIC_LABELS, TOPIC_SUBTOPICS } from "@/types";
 import type { NCEESTopic, Difficulty } from "@/types";
@@ -337,6 +337,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">
+          <ManualQuestionEntry />
           <SeedQuestionsCard />
           <ImportQuestionsCard />
         </TabsContent>
@@ -925,6 +926,253 @@ function ImportQuestionsCard() {
               </>
             )}
           </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ===== Manual Question Entry =====
+
+function ManualQuestionEntry() {
+  const [topic, setTopic] = useState<NCEESTopic>(NCEES_TOPICS[0]);
+  const [subtopic, setSubtopic] = useState(TOPIC_SUBTOPICS[NCEES_TOPICS[0]][0]);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [questionText, setQuestionText] = useState("");
+  const [options, setOptions] = useState([
+    { id: "A", text: "" },
+    { id: "B", text: "" },
+    { id: "C", text: "" },
+    { id: "D", text: "" },
+  ]);
+  const [correctId, setCorrectId] = useState("A");
+  const [solutionText, setSolutionText] = useState("");
+  const [codeRefs, setCodeRefs] = useState("");
+  const [hint, setHint] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  function handleTopicChange(t: NCEESTopic) {
+    setTopic(t);
+    setSubtopic(TOPIC_SUBTOPICS[t][0]);
+  }
+
+  function updateOption(index: number, text: string) {
+    setOptions((prev) => prev.map((o, i) => (i === index ? { ...o, text } : o)));
+  }
+
+  function resetForm() {
+    setQuestionText("");
+    setOptions([
+      { id: "A", text: "" },
+      { id: "B", text: "" },
+      { id: "C", text: "" },
+      { id: "D", text: "" },
+    ]);
+    setCorrectId("A");
+    setSolutionText("");
+    setCodeRefs("");
+    setHint("");
+    setResult(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!questionText.trim() || options.some((o) => !o.text.trim())) {
+      setResult("Fill in all fields (question + 4 options)");
+      return;
+    }
+
+    setSaving(true);
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/questions/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: [
+            {
+              topic,
+              subtopic,
+              difficulty,
+              question_text: questionText,
+              options,
+              correct_option_id: correctId,
+              solution_text: solutionText,
+              code_references: codeRefs
+                .split(",")
+                .map((r: string) => r.trim())
+                .filter(Boolean),
+              hint: hint || null,
+              source: "manual",
+              generation_status: "approved",
+              time_estimate_sec: 180,
+            },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      if (data.imported === 1) {
+        setResult("Question saved successfully!");
+        resetForm();
+      } else {
+        setResult(`Error: ${data.errors?.[0] || "Failed to save"}`);
+      }
+    } catch {
+      setResult("Network error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <PenLine className="h-5 w-5" />
+          Add Question Manually
+        </CardTitle>
+        <CardDescription>
+          Enter questions from PPI, EET, School of PE, or NCEES practice exams.
+          Supports LaTeX: use $...$ for inline math.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Topic / Subtopic / Difficulty */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">Topic</Label>
+              <select
+                className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                value={topic}
+                onChange={(e) => handleTopicChange(e.target.value as NCEESTopic)}
+              >
+                {NCEES_TOPICS.map((t) => (
+                  <option key={t} value={t}>{TOPIC_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Subtopic</Label>
+              <select
+                className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                value={subtopic}
+                onChange={(e) => setSubtopic(e.target.value)}
+              >
+                {TOPIC_SUBTOPICS[topic].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Difficulty</Label>
+              <select
+                className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Question text */}
+          <div>
+            <Label className="text-xs">Question Text</Label>
+            <textarea
+              className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm min-h-[80px]"
+              placeholder="A simply supported steel beam (W21x50, Fy = 50 ksi)..."
+              value={questionText}
+              onChange={(e) => setQuestionText(e.target.value)}
+            />
+          </div>
+
+          {/* Options */}
+          <div className="space-y-2">
+            <Label className="text-xs">Answer Options (click letter to mark correct)</Label>
+            {options.map((opt, i) => (
+              <div key={opt.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition-colors ${
+                    correctId === opt.id
+                      ? "border-green-500 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+                      : "hover:border-primary/50"
+                  }`}
+                  onClick={() => setCorrectId(opt.id)}
+                  title="Click to mark as correct answer"
+                >
+                  {opt.id}
+                </button>
+                <Input
+                  placeholder={`Option ${opt.id}...`}
+                  value={opt.text}
+                  onChange={(e) => updateOption(i, e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+            ))}
+            <p className="text-[10px] text-muted-foreground">
+              Correct answer: {correctId}
+            </p>
+          </div>
+
+          {/* Solution */}
+          <div>
+            <Label className="text-xs">Solution (step-by-step)</Label>
+            <textarea
+              className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm min-h-[80px]"
+              placeholder="Step 1: Calculate Mu = wL^2/8 = ..."
+              value={solutionText}
+              onChange={(e) => setSolutionText(e.target.value)}
+            />
+          </div>
+
+          {/* Code references + hint */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Code References (comma-separated)</Label>
+              <Input
+                placeholder="AISC 360-16 F2, ASCE 7-16 2.3.1"
+                value={codeRefs}
+                onChange={(e) => setCodeRefs(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Hint (optional)</Label>
+              <Input
+                placeholder="Consider the unbraced length..."
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
+
+          {result && (
+            <div className={`text-sm rounded-md p-2 ${result.includes("success") ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"}`}>
+              {result}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button type="submit" disabled={saving}>
+              {saving ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                <><Plus className="h-4 w-4 mr-2" /> Save Question</>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              <Trash2 className="h-4 w-4 mr-2" /> Clear
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

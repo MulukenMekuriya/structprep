@@ -15,6 +15,8 @@ import {
   BarChart3,
   CalendarDays,
   UserCog,
+  Zap,
+  Search,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +39,11 @@ const studyItems = [
   { title: "Review", url: "/review", icon: RotateCcw },
   { title: "Study Plan", url: "/study-plan", icon: CalendarDays },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
+];
+
+const drillItems = [
+  { title: "Which Code?", url: "/drills/which-code", icon: Zap },
+  { title: "Code Navigation", url: "/drills/code-nav", icon: Search },
 ];
 
 const referenceItems = [
@@ -70,6 +77,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {studyItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Drills</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {drillItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />

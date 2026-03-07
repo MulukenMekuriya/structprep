@@ -33,6 +33,8 @@ function PracticeSessionPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const topic = searchParams.get("topic");
+  const questionLimit = parseInt(searchParams.get("count") || "10", 10);
+  const timeLimitMin = parseInt(searchParams.get("time") || "0", 10);
 
   const [session, setSession] = useState<StudySession | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -44,6 +46,8 @@ function PracticeSessionPage() {
   const [hintText, setHintText] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(timeLimitMin * 60); // seconds
+  const [timedOut, setTimedOut] = useState(false);
 
   const initSession = useCallback(async () => {
     try {
@@ -62,7 +66,7 @@ function PracticeSessionPage() {
       setSession(sessionData);
 
       // 2. Fetch questions
-      const params = new URLSearchParams({ limit: "10" });
+      const params = new URLSearchParams({ limit: String(questionLimit) });
       if (topic) params.set("topic", topic);
       const questionsRes = await fetch(`/api/questions?${params}`);
 
@@ -80,11 +84,27 @@ function PracticeSessionPage() {
     } finally {
       setLoading(false);
     }
-  }, [topic]);
+  }, [topic, questionLimit]);
 
   useEffect(() => {
     initSession();
   }, [initSession]);
+
+  // Session timer (countdown if time limit set)
+  useEffect(() => {
+    if (timeLimitMin <= 0 || finished || loading || timedOut) return;
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimedOut(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLimitMin, finished, loading, timedOut]);
 
   async function handleAnswer(optionId: string, timeSpent: number) {
     if (!session || !questions[currentIndex]) return;
@@ -246,11 +266,19 @@ function PracticeSessionPage() {
     );
   }
 
+  // Auto-finish when time runs out
+  if (timedOut && !finished) {
+    finishSession();
+  }
+
   const currentQuestion = questions[currentIndex];
   if (!currentQuestion) return null;
 
   const answered = results.length > currentIndex;
   const progressPct = ((currentIndex + (answered ? 1 : 0)) / questions.length) * 100;
+  const timerMinutes = Math.floor(timeRemaining / 60);
+  const timerSeconds = timeRemaining % 60;
+  const timerWarning = timeLimitMin > 0 && timeRemaining < 120;
 
   return (
     <div className="space-y-4">
@@ -261,9 +289,16 @@ function PracticeSessionPage() {
           </span>
           <Progress value={progressPct} className="w-48 h-2" />
         </div>
-        <Button variant="outline" size="sm" onClick={finishSession}>
-          End Session
-        </Button>
+        <div className="flex items-center gap-2">
+          {timeLimitMin > 0 && (
+            <span className={`text-sm font-mono font-bold ${timerWarning ? "text-red-500" : "text-muted-foreground"}`}>
+              {timerMinutes}:{timerSeconds.toString().padStart(2, "0")}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={finishSession}>
+            End Session
+          </Button>
+        </div>
       </div>
 
       <QuestionCard

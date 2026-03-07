@@ -144,10 +144,25 @@ export default function ReviewPage() {
     }
   }
 
-  // Self-rating for SR quality
-  function handleSelfRate(quality: "easy" | "good" | "hard" | "again") {
-    // In a full implementation, this would update the SR queue intervals
-    // For now, it moves to the next card
+  // Self-rating for SR quality — updates SM-2 intervals
+  async function handleSelfRate(rating: "easy" | "good" | "hard" | "again") {
+    const question = questions[currentIndex];
+    if (!question) return;
+
+    // Map rating to SM-2 quality score
+    const qualityMap = { again: 1, hard: 3, good: 4, easy: 5 };
+    const quality = qualityMap[rating];
+
+    try {
+      await fetch("/api/review/rate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question_id: question.id, quality }),
+      });
+    } catch {
+      // Non-critical — still advance
+    }
+
     handleNext();
   }
 
