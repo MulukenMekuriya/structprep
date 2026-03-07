@@ -10,8 +10,8 @@ export interface RawChunk {
   metadata: Record<string, unknown>;
 }
 
-const MAX_CHUNK_TOKENS = 1200;
-const OVERLAP_TOKENS = 200;
+const MAX_CHUNK_TOKENS = 500;
+const OVERLAP_TOKENS = 100;
 const APPROX_CHARS_PER_TOKEN = 4;
 
 function estimateTokens(text: string): number {
@@ -82,17 +82,43 @@ export function chunkDocument(
   let currentChapter = "";
   let currentPage = 1;
 
-  // Detect page breaks (common in PDF extraction: form feed or "Page X" markers)
+  // Detect page breaks (form feed from per-page PDF extraction, or page number markers)
   function checkPageBreak(line: string): boolean {
-    if (line.includes("\f")) {
-      currentPage++;
+    const trimmed = line.trim();
+
+    // Form feed character (inserted between pages during PDF extraction)
+    if (trimmed === "\f" || trimmed === "") {
+      if (line.includes("\f")) {
+        currentPage++;
+        return true;
+      }
+      return false;
+    }
+
+    // "— 42 —" or "- 42 -" style page numbers
+    const dashMatch = trimmed.match(/^[-—–]\s*(\d+)\s*[-—–]$/);
+    if (dashMatch) {
+      currentPage = parseInt(dashMatch[1], 10);
       return true;
     }
-    const pageMatch = line.match(/^[-—]\s*(\d+)\s*[-—]$/);
+
+    // "Page 42" or "PAGE 42"
+    const pageMatch = trimmed.match(/^Page\s+(\d+)\s*$/i);
     if (pageMatch) {
       currentPage = parseInt(pageMatch[1], 10);
       return true;
     }
+
+    // Standalone page number at end of page (just a number on its own line)
+    if (/^\d+$/.test(trimmed) && parseInt(trimmed, 10) > 0 && parseInt(trimmed, 10) < 2000) {
+      const num = parseInt(trimmed, 10);
+      // Only treat as page number if it's close to current page (within 5)
+      if (Math.abs(num - currentPage) <= 5 || currentPage === 1) {
+        currentPage = num;
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -152,12 +178,10 @@ export function chunkDocument(
       });
 
       // Keep overlap for context continuity
+      // OVERLAP_TOKENS worth of words (~200 tokens = ~200 words)
       const words = currentChunk.split(/\s+/);
-      const overlapWords = Math.ceil(
-        OVERLAP_TOKENS * APPROX_CHARS_PER_TOKEN
-      );
       currentChunk =
-        words.slice(Math.max(0, words.length - overlapWords)).join(" ") + "\n";
+        words.slice(Math.max(0, words.length - OVERLAP_TOKENS)).join(" ") + "\n";
     }
   }
 

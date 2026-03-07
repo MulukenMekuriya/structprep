@@ -274,6 +274,7 @@ export const referenceMaterials = pgTable("sp_reference_materials", {
   category: materialCategoryEnum("category").notNull(),
   fileUrl: text("file_url").notNull(),
   totalChunks: integer("total_chunks").notNull().default(0),
+  processedChunks: integer("processed_chunks").notNull().default(0),
   processingStatus: processingStatusEnum("processing_status")
     .notNull()
     .default("pending"),

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
 import { buildExplanationPrompt } from "@/lib/ai/prompts";
-import { retrieveContext } from "@/lib/rag/retriever";
+import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 
 export async function POST(
   request: NextRequest,
@@ -45,11 +45,15 @@ export async function POST(
 
   // RAG retrieval using question text and code references as query
   const ragQuery = `${question.question_text} ${(question.code_references || []).join(" ")}`;
-  let contexts: Awaited<ReturnType<typeof retrieveContext>> = [];
+  let contexts: Awaited<ReturnType<typeof retrieveContext>>["contexts"] = [];
+  let confidence: RetrievalConfidence = "none";
   try {
-    contexts = await retrieveContext(ragQuery, 5);
+    const result = await retrieveContext(ragQuery, 8);
+    contexts = result.contexts;
+    confidence = result.confidence;
   } catch {
     contexts = [];
+    confidence = "none";
   }
 
   // Generate explanation via Claude
@@ -64,7 +68,8 @@ export async function POST(
     userAnswer,
     correctOption?.text || question.correct_option_id,
     question.code_references || [],
-    contexts
+    contexts,
+    confidence
   );
 
   const response = await anthropic.messages.create({

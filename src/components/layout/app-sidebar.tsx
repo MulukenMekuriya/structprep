@@ -12,6 +12,9 @@ import {
   RotateCcw,
   Settings,
   GraduationCap,
+  BarChart3,
+  CalendarDays,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +35,8 @@ const studyItems = [
   { title: "Mock Exam", url: "/exam", icon: Clock },
   { title: "AI Tutor", url: "/tutor", icon: MessageSquare },
   { title: "Review", url: "/review", icon: RotateCcw },
+  { title: "Study Plan", url: "/study-plan", icon: CalendarDays },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 const referenceItems = [
@@ -39,7 +44,8 @@ const referenceItems = [
   { title: "Formulas", url: "/formulas", icon: Calculator },
 ];
 
-const adminItems = [
+const manageItems = [
+  { title: "Settings", url: "/settings", icon: UserCog },
   { title: "Admin", url: "/admin", icon: Settings },
 ];
 
@@ -95,7 +101,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Manage</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
+              {manageItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={pathname === item.url} render={<Link href={item.url} />}>
                     <item.icon className="h-4 w-4" />

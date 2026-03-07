@@ -2,14 +2,21 @@ import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "./embeddings";
 import type { DocumentChunk, RetrievedContext } from "@/types";
 
+export type RetrievalConfidence = "high" | "medium" | "low" | "none";
+
+export interface RetrievalResult {
+  contexts: RetrievedContext[];
+  confidence: RetrievalConfidence;
+}
+
 /**
  * Hybrid retriever: combines vector similarity search (pgvector) with
  * keyword search (tsvector), merged via Reciprocal Rank Fusion (RRF).
  */
 
-const TOP_K_VECTOR = 10;
-const TOP_K_KEYWORD = 10;
-const TOP_K_FINAL = 5;
+const TOP_K_VECTOR = 15;
+const TOP_K_KEYWORD = 15;
+const TOP_K_FINAL = 8;
 const RRF_K = 60;
 
 function getSupabaseAdmin() {
@@ -88,12 +95,38 @@ async function keywordSearch(
 }
 
 /**
+ * Extract section reference numbers from a search query.
+ * E.g. "ASCE 7-16 26.11" → ["26.11"], "ACI 318 §22.2.2" → ["22.2.2"]
+ */
+function extractSectionRefs(query: string): string[] {
+  const refs: string[] = [];
+  // Match §X.Y.Z or Section X.Y.Z patterns
+  const sectionPattern = /(?:§|Section\s*|Sec\.?\s*)(\d+(?:\.\d+)+)/gi;
+  let match;
+  while ((match = sectionPattern.exec(query)) !== null) {
+    refs.push(match[1]);
+  }
+  // Match standalone dotted numbers like "26.11" or "22.2.2" (not year-like 2016, 7-16)
+  const dottedPattern = /\b(\d{1,3}\.\d+(?:\.\d+)*)\b/g;
+  while ((match = dottedPattern.exec(query)) !== null) {
+    const num = match[1];
+    // Skip if already captured or looks like a year/version (e.g., "7.16" from "7-16")
+    if (!refs.includes(num)) {
+      refs.push(num);
+    }
+  }
+  return refs;
+}
+
+/**
  * Reciprocal Rank Fusion (RRF) to merge vector and keyword results.
  * score(d) = sum( 1 / (k + rank_i(d)) ) for each ranker i
+ * Plus a section_ref boost when the query contains explicit section numbers.
  */
 function reciprocalRankFusion(
   vectorResults: { chunk: ChunkRow; rank: number }[],
-  keywordResults: { chunk: ChunkRow; rank: number }[]
+  keywordResults: { chunk: ChunkRow; rank: number }[],
+  sectionRefs: string[] = []
 ): { chunk: ChunkRow; score: number }[] {
   const scores = new Map<string, { chunk: ChunkRow; score: number }>();
 
@@ -109,17 +142,59 @@ function reciprocalRankFusion(
     scores.set(chunk.id, existing);
   }
 
+  // Boost chunks whose section_ref matches the queried section numbers
+  if (sectionRefs.length > 0) {
+    for (const entry of scores.values()) {
+      const ref = entry.chunk.section_ref || "";
+      for (const queryRef of sectionRefs) {
+        if (ref === queryRef || ref.startsWith(queryRef + ".")) {
+          // Exact match: massive boost (equivalent to rank 1 in a third ranker)
+          entry.score += 1 / (RRF_K + 1);
+        } else if (queryRef.startsWith(ref + ".")) {
+          // Parent section match: moderate boost
+          entry.score += 1 / (RRF_K + 5);
+        }
+      }
+    }
+  }
+
   return Array.from(scores.values()).sort((a, b) => b.score - a.score);
 }
 
 /**
+ * Compute retrieval confidence based on RRF scores.
+ * - high: multiple strong matches (top score > 0.025 and 3+ results above 0.02)
+ * - medium: some matches (top score > 0.02 or 2+ results above 0.015)
+ * - low: weak matches (has results but scores are low)
+ * - none: no results at all
+ *
+ * RRF score ranges: max possible ~0.033 (rank 1 in both), typical good match ~0.02-0.03
+ */
+function computeConfidence(
+  results: { chunk: ChunkRow; score: number }[]
+): RetrievalConfidence {
+  if (results.length === 0) return "none";
+
+  const topScore = results[0].score;
+  const strongMatches = results.filter((r) => r.score > 0.02).length;
+  const decentMatches = results.filter((r) => r.score > 0.015).length;
+
+  if (topScore > 0.025 && strongMatches >= 3) return "high";
+  if (topScore > 0.02 || decentMatches >= 2) return "medium";
+  return "low";
+}
+
+/**
  * Main retrieval function: hybrid search with RRF reranking.
- * Returns top-K chunks with source metadata.
+ * Returns top-K chunks with source metadata and a confidence level.
  */
 export async function retrieveContext(
   query: string,
   topK: number = TOP_K_FINAL
-): Promise<RetrievedContext[]> {
+): Promise<RetrievalResult> {
+  // Extract section references from query for boosting
+  const sectionRefs = extractSectionRefs(query);
+
   // Run vector and keyword searches in parallel
   const queryEmbedding = await generateEmbedding(query);
   const [vectorResults, keywordResults] = await Promise.all([
@@ -127,11 +202,13 @@ export async function retrieveContext(
     keywordSearch(query),
   ]);
 
-  // Merge with RRF
-  const fusedResults = reciprocalRankFusion(vectorResults, keywordResults);
+  // Merge with RRF (with section_ref boost)
+  const fusedResults = reciprocalRankFusion(vectorResults, keywordResults, sectionRefs);
+
+  const confidence = computeConfidence(fusedResults);
 
   // Take top K and format
-  return fusedResults.slice(0, topK).map(({ chunk, score }) => ({
+  const contexts = fusedResults.slice(0, topK).map(({ chunk, score }) => ({
     chunk: {
       id: chunk.id,
       document_id: chunk.document_id,
@@ -146,4 +223,6 @@ export async function retrieveContext(
     score,
     source_title: chunk.doc_title || "Unknown",
   }));
+
+  return { contexts, confidence };
 }

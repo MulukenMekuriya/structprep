@@ -24,8 +24,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await retrieveContext(query, limit);
-    return NextResponse.json({ results });
+    const { contexts, confidence } = await retrieveContext(query, limit);
+
+    // Flatten for the frontend SearchResult interface
+    const results = contexts.map((ctx) => ({
+      chunk_text: ctx.chunk.chunk_text,
+      section_ref: ctx.chunk.section_ref,
+      chapter: ctx.chunk.chapter,
+      page_number: ctx.chunk.page_number,
+      document_title: ctx.source_title,
+      document_id: ctx.chunk.document_id,
+      similarity: Math.min(ctx.score / 0.05, 1),  // normalize RRF score to 0-1 (max ~0.049 with section boost)
+    }));
+
+    return NextResponse.json({ results, confidence });
   } catch (error) {
     return NextResponse.json(
       { error: "Search failed" },

@@ -5,12 +5,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex items-center gap-2 border-b px-4 py-2 md:hidden">
           <SidebarTrigger />
           <span className="text-sm font-semibold">StructPrep</span>
         </div>
-        <div className="p-4 md:p-6 lg:p-8">{children}</div>
+        <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </SidebarProvider>
   );

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { chunkDocument } from "@/lib/rag/chunker";
 import { generateEmbeddingsBatch } from "@/lib/rag/embeddings";
+
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -14,39 +15,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
-  const title = formData.get("title") as string;
-  const category = formData.get("category") as string;
+  const { title, category, storage_path } = await request.json();
 
-  if (!file || !title || !category) {
+  if (!title || !category || !storage_path) {
     return NextResponse.json(
-      { error: "Missing required fields: file, title, category" },
+      { error: "Missing required fields: title, category, storage_path" },
       { status: 400 }
     );
   }
 
-  // Use admin client for storage and DB operations
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
   try {
-    // 1. Upload PDF to Supabase Storage
-    const fileName = `${crypto.randomUUID()}-${file.name}`;
-    const { error: uploadError } = await admin.storage
-      .from("references")
-      .upload(fileName, file, { contentType: "application/pdf" });
-
-    if (uploadError) throw uploadError;
-
     const {
       data: { publicUrl },
-    } = admin.storage.from("references").getPublicUrl(fileName);
+    } = supabase.storage.from("references").getPublicUrl(storage_path);
 
-    // 2. Create reference material record
-    const { data: material, error: insertError } = await admin
+    // Create reference material record
+    const { data: material, error: insertError } = await supabase
       .from("sp_reference_materials")
       .insert({
         title,
@@ -57,81 +41,21 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (insertError) throw insertError;
-
-    // 3. Extract text from PDF (using pdf-parse)
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    let pdfText: string;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse");
-      const parsed = await pdfParse(buffer);
-      pdfText = parsed.text;
-    } catch {
-      // Update status to error
-      await admin
-        .from("sp_reference_materials")
-        .update({ processing_status: "error" })
-        .eq("id", material.id);
-      throw new Error("Failed to parse PDF");
+    if (insertError) {
+      console.error("DB insert error:", insertError);
+      throw new Error(`DB insert failed: ${insertError.message}`);
     }
 
-    // 4. Chunk the document
-    const chunks = chunkDocument(pdfText, title);
-
-    // 5. Generate embeddings in batches
-    const chunkTexts = chunks.map((c) => c.text);
-    let embeddings: number[][];
-    try {
-      embeddings = await generateEmbeddingsBatch(chunkTexts);
-    } catch {
-      await admin
-        .from("sp_reference_materials")
-        .update({ processing_status: "error" })
-        .eq("id", material.id);
-      throw new Error("Failed to generate embeddings");
-    }
-
-    // 6. Insert chunks with embeddings
-    const chunkInserts = chunks.map((chunk, i) => ({
-      document_id: material.id,
-      chunk_text: chunk.text,
-      chunk_type: chunk.type,
-      section_ref: chunk.sectionRef,
-      chapter: chunk.chapter,
-      page_number: chunk.pageNumber,
-      token_count: chunk.tokenCount,
-      embedding: JSON.stringify(embeddings[i]),
-      metadata: chunk.metadata,
-    }));
-
-    // Insert in batches of 100
-    for (let i = 0; i < chunkInserts.length; i += 100) {
-      const batch = chunkInserts.slice(i, i + 100);
-      const { error: chunkError } = await admin
-        .from("sp_document_chunks")
-        .insert(batch);
-      if (chunkError) {
-        console.error("Chunk insert error:", chunkError);
-      }
-    }
-
-    // 7. Update material status
-    await admin
-      .from("sp_reference_materials")
-      .update({
-        processing_status: "ready",
-        total_chunks: chunks.length,
-      })
-      .eq("id", material.id);
+    // Return immediately — process in background
+    const processingPromise = processDocument(supabase, material.id, storage_path, title);
+    processingPromise.catch((err) => {
+      console.error("Background processing error:", err);
+    });
 
     return NextResponse.json({
       id: material.id,
       title,
-      total_chunks: chunks.length,
-      status: "ready",
+      status: "processing",
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -142,5 +66,132 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processDocument(supabase: any, materialId: string, storagePath: string, title: string) {
+  try {
+    // 1. Download PDF from storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("references")
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
+      console.error("Storage download error:", downloadError);
+      await supabase
+        .from("sp_reference_materials")
+        .update({ processing_status: "error" })
+        .eq("id", materialId);
+      return;
+    }
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+
+    // 2. Parse PDF with per-page text extraction
+    let pdfText: string;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+      const pageTexts: string[] = [];
+      const parsed = await pdfParse(buffer, {
+        // Custom page renderer to capture per-page text
+        pagerender: async function (pageData: { getTextContent: () => Promise<{ items: { str: string; transform: number[] }[] }> }) {
+          const textContent = await pageData.getTextContent();
+          const text = textContent.items.map((item: { str: string }) => item.str).join(" ");
+          pageTexts.push(text);
+          return text;
+        },
+      });
+      // Join pages with form feed character so chunker can track page boundaries
+      pdfText = pageTexts.length > 0 ? pageTexts.join("\n\f\n") : parsed.text;
+    } catch (pdfErr) {
+      console.error("PDF parse error:", pdfErr);
+      await supabase
+        .from("sp_reference_materials")
+        .update({ processing_status: "error" })
+        .eq("id", materialId);
+      return;
+    }
+
+    // 3. Chunk the document
+    const chunks = chunkDocument(pdfText, title);
+
+    // Set total so the client can show progress
+    await supabase
+      .from("sp_reference_materials")
+      .update({ total_chunks: chunks.length })
+      .eq("id", materialId);
+
+    console.log(`Processing ${chunks.length} chunks for "${title}"...`);
+
+    // 4. Embed + insert in small batches with progress updates
+    const BATCH_SIZE = 20;
+    let processedCount = 0;
+
+    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batchChunks = chunks.slice(i, i + BATCH_SIZE);
+      const batchTexts = batchChunks.map((c) => c.text);
+
+      let embeddings: number[][];
+      try {
+        embeddings = await generateEmbeddingsBatch(batchTexts);
+      } catch (embErr) {
+        console.error(`Embeddings error at batch ${i}:`, embErr);
+        await supabase
+          .from("sp_reference_materials")
+          .update({ processing_status: "error" })
+          .eq("id", materialId);
+        return;
+      }
+
+      const chunkInserts = batchChunks.map((chunk, j) => ({
+        document_id: materialId,
+        chunk_text: chunk.text,
+        chunk_type: chunk.type,
+        section_ref: chunk.sectionRef,
+        chapter: chunk.chapter,
+        page_number: chunk.pageNumber,
+        token_count: chunk.tokenCount,
+        embedding: JSON.stringify(embeddings[j]),
+        metadata: chunk.metadata,
+      }));
+
+      const { error: chunkError } = await supabase
+        .from("sp_document_chunks")
+        .insert(chunkInserts);
+
+      if (chunkError) {
+        console.error("Chunk insert error:", chunkError);
+      }
+
+      processedCount += batchChunks.length;
+
+      // Update progress in DB
+      await supabase
+        .from("sp_reference_materials")
+        .update({ processed_chunks: processedCount })
+        .eq("id", materialId);
+
+      console.log(`Progress: ${processedCount}/${chunks.length} chunks`);
+    }
+
+    // 5. Done
+    await supabase
+      .from("sp_reference_materials")
+      .update({
+        processing_status: "ready",
+        total_chunks: chunks.length,
+        processed_chunks: chunks.length,
+      })
+      .eq("id", materialId);
+
+    console.log(`Done processing "${title}" — ${chunks.length} chunks.`);
+  } catch (error) {
+    console.error("Processing failed:", error);
+    await supabase
+      .from("sp_reference_materials")
+      .update({ processing_status: "error" })
+      .eq("id", materialId);
   }
 }

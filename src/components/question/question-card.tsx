@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { TOPIC_LABELS, type Question } from "@/types";
+import { Markdown } from "@/components/ui/markdown";
 
 interface QuestionCardProps {
   question: Question;
@@ -29,6 +30,8 @@ interface QuestionCardProps {
   onExplain?: () => void;
   onNext?: () => void;
   showSolution?: boolean;
+  hintText?: string | null;
+  hintLoading?: boolean;
 }
 
 export function QuestionCard({
@@ -41,6 +44,8 @@ export function QuestionCard({
   onExplain,
   onNext,
   showSolution = false,
+  hintText,
+  hintLoading,
 }: QuestionCardProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -101,9 +106,9 @@ export function QuestionCard({
             {flagged ? "Flagged" : "Flag"}
           </Button>
         </div>
-        <CardTitle className="text-lg leading-relaxed mt-2">
-          {question.question_text}
-        </CardTitle>
+        <div className="mt-2 text-lg leading-relaxed font-semibold">
+          <Markdown>{question.question_text}</Markdown>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-3">
@@ -135,7 +140,7 @@ export function QuestionCard({
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-semibold text-sm">
                 {option.id}
               </div>
-              <p className="text-sm flex-1">{option.text}</p>
+              <div className="text-sm flex-1"><Markdown>{option.text}</Markdown></div>
               {submitted && option.id === question.correct_option_id && (
                 <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
               )}
@@ -148,6 +153,21 @@ export function QuestionCard({
           );
         })}
 
+        {/* Hint Panel */}
+        {!submitted && (hintText || hintLoading) && (
+          <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-50/50 dark:bg-yellow-950/20 p-4">
+            <h3 className="font-semibold text-sm flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
+              <Lightbulb className="h-4 w-4" />
+              Hint (Level {hintsUsed})
+            </h3>
+            {hintLoading ? (
+              <p className="text-sm text-muted-foreground">Generating hint...</p>
+            ) : (
+              <Markdown>{hintText || ""}</Markdown>
+            )}
+          </div>
+        )}
+
         {/* Solution Panel */}
         {submitted && (showSolution || true) && (
           <div className="mt-4 rounded-lg border bg-muted/50 p-4 space-y-3">
@@ -159,14 +179,22 @@ export function QuestionCard({
               )}
               {isCorrect ? "Correct!" : "Incorrect"}
             </h3>
-            <div className="text-sm whitespace-pre-wrap">
-              {question.solution_text}
-            </div>
+            <Markdown>{question.solution_text}</Markdown>
             {question.code_references.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {question.code_references.map((ref) => (
-                  <Badge key={ref} variant="outline" className="text-xs">
-                    {ref}
+                  <Badge
+                    key={ref}
+                    variant="outline"
+                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                    onClick={() =>
+                      window.open(
+                        `/references?q=${encodeURIComponent(ref)}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    {ref} ↗
                   </Badge>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { QuestionCard } from "@/components/question/question-card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,21 @@ interface AttemptResult {
   correct_option_id: string;
 }
 
-export default function PracticeSessionPage() {
+export default function PracticeSessionWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <PracticeSessionPage />
+    </Suspense>
+  );
+}
+
+function PracticeSessionPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const topic = searchParams.get("topic");
@@ -27,6 +41,9 @@ export default function PracticeSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  const [hintText, setHintText] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
 
   const initSession = useCallback(async () => {
     try {
@@ -82,7 +99,7 @@ export default function PracticeSessionPage() {
           selected_option_id: optionId,
           time_spent_sec: timeSpent,
           flagged: false,
-          hints_used: 0,
+          hints_used: hintsUsed,
           session_id: session.id,
         }),
       });
@@ -109,9 +126,35 @@ export default function PracticeSessionPage() {
     }
   }
 
+  async function handleHint(level: 1 | 2 | 3) {
+    const question = questions[currentIndex];
+    if (!question) return;
+
+    setHintLoading(true);
+    setHintsUsed(level);
+
+    try {
+      const res = await fetch(`/api/questions/${question.id}/hint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level }),
+      });
+
+      if (!res.ok) throw new Error("Failed to get hint");
+      const data = await res.json();
+      setHintText(data.hint);
+    } catch {
+      setHintText("Could not generate hint. Try again.");
+    } finally {
+      setHintLoading(false);
+    }
+  }
+
   function handleNext() {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
+      setHintText(null);
+      setHintsUsed(0);
     } else {
       finishSession();
     }
@@ -229,7 +272,10 @@ export default function PracticeSessionPage() {
         questionNumber={currentIndex + 1}
         totalQuestions={questions.length}
         onAnswer={handleAnswer}
+        onHint={handleHint}
         onNext={handleNext}
+        hintText={hintText}
+        hintLoading={hintLoading}
       />
     </div>
   );
