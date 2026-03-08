@@ -39,7 +39,7 @@ export const FORMULA_SHEETS: Record<string, FormulaCategory[]> = {
       title: "Wind Loads (ASCE 7-16 Chapter 27)",
       formulas: [
         { name: "Velocity Pressure", latex: "q_z = 0.00256 K_z K_{zt} K_d K_e V^2", description: "Velocity pressure at height z", reference: "ASCE 7-16 §27.3.2", variables: "$K_z$ = velocity pressure exposure coeff, $K_{zt}$ = topographic factor, $K_d$ = wind directionality factor, $K_e$ = ground elevation factor, $V$ = basic wind speed (mph)" },
-        { name: "Design Wind Pressure", latex: "p = qGC_p - q_i(GC_{pi})", description: "Design wind pressure on MWFRS", reference: "ASCE 7-16 §27.4.1", variables: "$G$ = gust-effect factor, $C_p$ = external pressure coeff, $GC_{pi}$ = internal pressure coeff" },
+        { name: "Design Wind Pressure (MWFRS)", latex: "p = q_z G C_p - q_i (GC_{pi})", description: "Design wind pressure on MWFRS. Note: G multiplies only Cp (external). GCpi from Table 26.13-1 is a single combined coefficient that already includes G — do NOT multiply by G again.", reference: "ASCE 7-16 §27.4-1", variables: "$q_z$ = velocity pressure at height z, $G$ = gust-effect factor (§26.11), $C_p$ = external pressure coeff (Figure 27.3-1), $q_i$ = velocity pressure for internal pressure, $(GC_{pi})$ = internal pressure coeff from Table 26.13-1 (already includes G)" },
       ],
     },
     {

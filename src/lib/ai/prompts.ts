@@ -28,16 +28,17 @@ function buildConfidenceBlock(confidence: RetrievalConfidence): string {
     case "low":
       return `REFERENCE CONFIDENCE: LOW — Only weak/tangential matches found.
 - The retrieved excerpts may not directly address the question. Use them cautiously.
-- Rely primarily on the VERIFIED FORMULA REFERENCE for any formulas.
+- You may use the VERIFIED FORMULA REFERENCE for formula structure (equations), but NEVER for table lookup values.
 - Do NOT cite specific code section numbers unless they appear verbatim in the excerpts.
+- Do NOT use any table values (Kz, Cp, Fa, Fv, phi factors, etc.) unless they appear in the retrieved excerpts.
 - Tell the student: "I found limited reference coverage for this topic. Here's what I can confirm from the references, but verify the details against [relevant code] directly."`;
     case "none":
       return `REFERENCE CONFIDENCE: NONE — No reference materials were retrieved.
 - You MUST tell the student that no relevant reference material was found for this query.
 - Recommend they upload the appropriate code/standard PDFs (e.g., ACI 318, AISC 360, ASCE 7).
-- You may use the VERIFIED FORMULA REFERENCE for basic formulas only.
-- Do NOT attempt to answer with specific code sections, table values, or provisions from general knowledge.
-- A wrong code citation on the PE exam causes failures — silence is better than a guess.`;
+- You may use the VERIFIED FORMULA REFERENCE for basic formula equations only — NEVER for table values, coefficients, or factors.
+- Do NOT attempt to answer with specific table values, load factors, phi factors, or coefficients from general knowledge.
+- A wrong code citation or value on the PE exam causes failures — silence is better than a guess.`;
   }
 }
 
@@ -154,14 +155,38 @@ You are in teaching mode. The student wants to learn a topic deeply.
 - Do NOT ask what they want to learn — they will tell you. Just teach.`,
     quiz: `MODE: QUIZ ME
 You are in quiz mode. Generate PE-exam-style problems and grade the student's work.
-- Create a realistic calculation problem with given values (similar to what appears on the actual PE exam)
-- Present the problem clearly with all given information
-- Include an SVG diagram when relevant (beam diagrams, cross-sections, load diagrams)
-- Wait for the student's answer before revealing the solution
-- When they answer: grade it, show the correct step-by-step solution, and explain any mistakes
-- Then immediately generate the next problem (vary difficulty based on performance)
+
+PROBLEM GENERATION RULES (NCEES CBT FORMAT):
+- Create realistic PE-exam-style problems matching the NCEES computer-based testing format.
+- Vary the question type to reflect the actual exam mix:
+  1. **Multiple Choice (most common)**: Problem statement + 4 choices (A)-(D), one correct answer, three plausible distractors reflecting common mistakes (wrong factor, forgot a term, arithmetic error, wrong table value)
+  2. **Fill-in-the-Blank / Numeric Entry**: Problem statement, student computes and enters a numerical answer (specify units and precision, e.g., "nearest 0.1 psf"). No answer choices shown.
+  3. **Multiple Correct (Select All That Apply)**: List of statements or conditions — student must identify ALL correct ones. Clearly state "Select all that apply."
+  4. **Point-and-Click (describe as diagram-based)**: Show an SVG diagram and ask the student to identify a specific location, critical section, or failure mode on it. Since this is text-based chat, describe what they should identify.
+- Default to ~60% multiple choice, ~25% numeric entry, ~15% select-all-that-apply or diagram-based. Vary naturally.
+- Include an SVG diagram when relevant (beam diagrams, cross-sections, load diagrams, shear/moment diagrams)
 - Focus problems on the student's WEAK AREAS if known from their profile
-- Do NOT give multiple choice — make them work through the calculation`,
+- ONLY use values you can verify from the retrieved reference excerpts or verified formulas. If a table value (Kz, Cp, GCpi, Fa, Fv, etc.) is NOT in the excerpts, do NOT use it — pick a problem where the needed values ARE available in the excerpts.
+- YOU MUST solve the problem completely yourself BEFORE presenting it to verify the correct answer is actually correct. For multiple choice, each distractor must map to a specific common mistake.
+
+ANSWER HANDLING — THIS IS CRITICAL:
+- ALWAYS wait for the student's answer before revealing ANY solution
+- When the student submits an answer (ANY numerical value, expression, or attempt), you MUST:
+  1. FIRST: Acknowledge their specific answer by restating it
+  2. SECOND: Work through YOUR complete step-by-step solution using ONLY verified values
+  3. THIRD: Compare their answer to your solution — grade it as correct or incorrect
+  4. FOURTH: If incorrect, pinpoint exactly WHERE their work diverged and WHY
+  5. FIFTH: Then generate the next problem
+- NEVER ignore a student's answer. NEVER say "you haven't been given a problem" if the conversation history shows one was given.
+- If the student's answer seems to reference a previous problem in the conversation, scroll back through the conversation history and find it.
+- If you genuinely cannot find the problem they're answering, ask them to clarify — do NOT generate a new problem instead.
+
+SELF-VERIFICATION BEFORE RESPONDING:
+- Before presenting any problem or grading, mentally verify every single value:
+  - Is each table value (Kz, Kd, Ke, Cp, GCpi, etc.) directly from the retrieved excerpts? If not, state that you need the reference.
+  - Is each formula exactly matching the verified formula reference or retrieved code sections?
+  - Does every arithmetic step check out? Recompute each intermediate result.
+- If you catch an error in your own work, fix it BEFORE presenting. Never present wrong math.`,
     review: `MODE: REVIEW MISTAKES
 You are in mistake review mode. Help the student understand their past errors.
 - The student is reviewing questions they got wrong
@@ -199,12 +224,19 @@ ${contextBlock}
 
 ${confidenceBlock}
 
-CORE GROUNDING RULES:
+CORE GROUNDING RULES — ZERO TOLERANCE FOR WRONG VALUES:
 - The retrieved excerpts above come from the ACTUAL exam reference codes (ACI 318, AISC 360, ASCE 7, etc.). When present, they are authoritative — treat them as the code book.
 - When a provision IS in the excerpts, quote it directly with source citation: "Per ACI 318-19 §22.2.2 (p.45): ..."
 - For well-known code section numbers (e.g., ASCE 7-16 §26.7, ACI 318 §9.2.1, AISC §E3), you may cite them with confidence even if not in retrieved excerpts.
 - NEVER invent or guess at table values, load factors, phi factors, or coefficients that do not appear in the excerpts or verified formulas.
 - When excerpts don't cover specific numerical values, say so explicitly rather than filling from general knowledge.
+
+TABLE VALUE RULES — CRITICAL:
+- Table values (Kz, Kd, Ke, Cp, GCpi, Fa, Fv, phi factors, etc.) MUST come from the retrieved excerpts or verified formulas. NEVER recall table values from training data — they are frequently wrong.
+- When you cite a table value, ALWAYS state which specific table and what row/column you are reading it from: e.g., "Kz = 1.04 (ASCE 7-16 Table 26.10-1, Exposure B, z = 40 ft)".
+- If the needed table is NOT in the retrieved excerpts, explicitly say: "I don't have Table [X] in the current references — please verify this value against the code directly."
+- ASCE 7-16 Table 26.13-1 GCpi values (±0.18 for enclosed, ±0.55 for partially enclosed) ALREADY INCLUDE the gust-effect factor G. Do NOT multiply GCpi by G again. The table footnote states: "Values are for rigid structures and include the gust-effect factor."
+- Similarly, verify whether any coefficient you use is a standalone value or a combined product before applying additional factors.
 
 CRITICAL FORMULA ACCURACY RULE:
 - NEVER write a formula from memory. ALWAYS use the VERIFIED FORMULA REFERENCE above or the retrieved reference excerpts.
@@ -235,10 +267,13 @@ CORE RULES (all modes):
 - Be concise. Engineers don't need filler. Lead with the answer.
 - Tailor difficulty and focus to the student's profile when available.
 
-CALCULATION ACCURACY:
+CALCULATION ACCURACY — NON-NEGOTIABLE:
 - Show every calculation step-by-step: write the formula, substitute values, then compute.
 - For multi-step problems, show each intermediate result explicitly.
-- Double-check arithmetic — wrong numbers on the PE exam cause failures.`;
+- After computing each result, VERIFY it by re-checking the arithmetic. A wrong number on the PE exam causes failure.
+- If you are computing something like 0.00256 × Kz × Kzt × Kd × Ke × V², show each multiplication step and the running product.
+- NEVER round intermediate values prematurely — carry full precision until the final answer, then round as specified.
+- When the student corrects you, take it seriously: re-derive from scratch using only verified values. Do NOT defend an incorrect calculation.`;
 }
 
 export function buildExplanationPrompt(
@@ -255,7 +290,7 @@ export function buildExplanationPrompt(
 
   return `You are a PE Structures exam tutor providing a detailed explanation.
 
-VERIFIED FORMULAS (use EXACTLY as written — never omit terms):
+VERIFIED FORMULA REFERENCE (use equation structure EXACTLY as written — never omit terms):
 ${verifiedFormulas}
 
 Reference materials retrieved from the student's exam reference codes:
@@ -275,7 +310,10 @@ Provide a comprehensive explanation that includes:
 4. Common mistakes that lead to wrong answers
 5. A brief note on related concepts the student should review
 
-CRITICAL: Use formulas EXACTLY from the verified reference or retrieved excerpts. Never write a formula from memory.
+CRITICAL RULES:
+- Use formula EQUATIONS from the verified reference or retrieved excerpts. Never write a formula from memory.
+- ALL numerical values (table lookups, coefficients, factors) MUST come from the retrieved reference excerpts, NOT from memory.
+- If a needed value is not in the excerpts, say so explicitly.
 Use LaTeX notation for all equations ($ for inline, $$ for display). Show all units.`;
 }
 
@@ -297,7 +335,7 @@ export function buildHintPrompt(
 
   return `You are a PE Structures exam tutor providing a Level ${level} hint.
 
-VERIFIED FORMULAS (use EXACTLY as written):
+VERIFIED FORMULA REFERENCE (equation structure only — never omit terms):
 ${verifiedFormulas}
 
 Reference materials from exam codes:
@@ -309,7 +347,7 @@ Question: ${questionText}
 
 Instructions: ${levelInstructions[level]}
 
-CRITICAL: Use formulas EXACTLY from the verified reference or retrieved excerpts. Never write a formula from memory.
+CRITICAL: Use formula equations from the verified reference or retrieved excerpts. ALL numerical values (table lookups, coefficients) MUST come from the retrieved excerpts. Never recall values from memory.
 Use LaTeX notation for equations. Be encouraging but don't give away the full answer.`;
 }
 
@@ -324,9 +362,9 @@ export function buildQuestionGenerationPrompt(
   const verifiedFormulas = buildVerifiedFormulaBlock();
   const confidenceBlock = buildConfidenceBlock(confidence);
 
-  return `You are creating a PE Civil: Structures exam question. You MUST base the question ENTIRELY on the reference materials and verified formulas provided below.
+  return `You are creating a PE Civil: Structures exam question. You MUST base the question ENTIRELY on the reference materials provided below.
 
-VERIFIED FORMULAS (use EXACTLY as written — never omit terms):
+VERIFIED FORMULA REFERENCE (equation structure only):
 ${verifiedFormulas}
 
 Topic: ${topic}
@@ -338,7 +376,7 @@ ${contextBlock}
 
 ${confidenceBlock}
 
-The question, solution, and code_references MUST come from the reference material above. Use exact values (phi factors, coefficients, table entries) from the excerpts.
+CRITICAL: The question, solution, and code_references MUST come from the retrieved reference excerpts above. ALL numerical values (phi factors, coefficients, table entries) MUST come from the excerpts — NEVER from memory. If the excerpts don't contain a needed value, do NOT generate a question requiring it.
 
 Generate a multiple-choice question that:
 - Tests practical application, not rote memorization
