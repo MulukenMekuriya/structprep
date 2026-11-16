@@ -37,17 +37,38 @@ export interface GenerateOptions {
   effort?: Effort;
 }
 
-/** Single non-streaming completion; returns the concatenated text ("" if refused). */
-export async function generateText(opts: GenerateOptions): Promise<string> {
-  const response = await getAIClient().beta.messages.create({
+/**
+ * Fast mode (Opus 5.5): ~2.5x faster output at 2x price. It has its own rate
+ * limit, so on a 429 we retry once at standard speed.
+ */
+function isRateLimit(err: unknown): boolean {
+  return err instanceof Anthropic.RateLimitError;
+}
+
+function buildParams(opts: GenerateOptions, fast: boolean) {
+  return {
     model: AI_MODEL,
     max_tokens: opts.maxTokens + THINKING_HEADROOM,
     system: opts.system,
     messages: opts.messages,
     output_config: { effort: opts.effort ?? "low" },
     betas: [FALLBACK_BETA],
-    fallbacks: "default",
-  });
+    fallbacks: "default" as const,
+    ...(fast ? { speed: "fast" as const } : {}),
+  };
+}
+
+/** Single non-streaming completion; returns the concatenated text ("" if refused). */
+export async function generateText(opts: GenerateOptions): Promise<string> {
+  const run = (fast: boolean) =>
+    getAIClient().beta.messages.create(buildParams(opts, fast));
+  let response;
+  try {
+    response = await run(true);
+  } catch (err) {
+    if (!isRateLimit(err)) throw err;
+    response = await run(false);
+  }
   return response.content
     .map((b) => (b.type === "text" ? b.text : ""))
     .join("");
@@ -57,21 +78,26 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
 export async function* streamText(
   opts: GenerateOptions
 ): AsyncGenerator<string> {
-  const stream = getAIClient().beta.messages.stream({
-    model: AI_MODEL,
-    max_tokens: opts.maxTokens + THINKING_HEADROOM,
-    system: opts.system,
-    messages: opts.messages,
-    output_config: { effort: opts.effort ?? "medium" },
-    betas: [FALLBACK_BETA],
-    fallbacks: "default",
-  });
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      yield event.delta.text;
+  for (const fast of [true, false]) {
+    let yielded = false;
+    try {
+      const stream = getAIClient().beta.messages.stream(
+        buildParams(opts, fast)
+      );
+      for await (const event of stream) {
+        if (
+          event.type === "content_block_delta" &&
+          event.delta.type === "text_delta"
+        ) {
+          yielded = true;
+          yield event.delta.text;
+        }
+      }
+      return;
+    } catch (err) {
+      // Only fall back to standard speed if fast mode was rate limited
+      // before any text reached the client.
+      if (!(fast && !yielded && isRateLimit(err))) throw err;
     }
   }
 }
