@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAIClient, AI_MODEL } from "@/lib/ai/client";
+import { generateText } from "@/lib/ai/client";
 import { buildExplanationPrompt } from "@/lib/ai/prompts";
 import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 
@@ -57,7 +57,6 @@ export async function POST(
   }
 
   // Generate explanation via AI
-  const ai = getAIClient();
 
   const correctOption = (question.options as { id: string; text: string }[]).find(
     (o) => o.id === question.correct_option_id
@@ -72,13 +71,11 @@ export async function POST(
     confidence
   );
 
-  const response = await ai.chat.completions.create({
-    model: AI_MODEL,
-    max_tokens: 4096,
+  const explanation = await generateText({
+    maxTokens: 4096,
+    effort: "medium",
     messages: [{ role: "user", content: prompt }],
   });
-
-  const explanation = response.choices[0]?.message?.content ?? "";
 
   // Cache the explanation
   await supabase.from("sp_question_explanations").insert({

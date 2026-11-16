@@ -1,4 +1,4 @@
-import { getAIClient, AI_MODEL } from "./client";
+import { generateText } from "./client";
 
 interface ConversationMessage {
   role: "user" | "assistant";
@@ -17,20 +17,14 @@ export async function rewriteQueryForRetrieval(
   if (conversationHistory.length <= 1) return currentMessage;
   if (isLikelySelfContained(currentMessage)) return currentMessage;
 
-  const ai = getAIClient();
-
   const recentHistory = conversationHistory.slice(-6);
   const historyBlock = recentHistory
     .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content.slice(0, 300)}`)
     .join("\n");
 
-  const response = await ai.chat.completions.create({
-    model: AI_MODEL,
-    max_tokens: 200,
-    messages: [
-      {
-        role: "system",
-        content: `You rewrite student queries to be self-contained for a document search system. The student is studying for the PE Civil: Structures exam.
+  const response = await generateText({
+    maxTokens: 200,
+    system: `You rewrite student queries to be self-contained for a document search system. The student is studying for the PE Civil: Structures exam.
 
 Rules:
 - Resolve pronouns ("it", "that", "this") using conversation context
@@ -39,7 +33,7 @@ Rules:
 - Keep the rewritten query concise — it's a search query, not an essay
 - If the query is already self-contained, return it unchanged
 - Return ONLY the rewritten query, nothing else`,
-      },
+    messages: [
       {
         role: "user",
         content: `Conversation:\n${historyBlock}\n\nLatest query to rewrite: "${currentMessage}"`,
@@ -47,7 +41,7 @@ Rules:
     ],
   });
 
-  const rewritten = response.choices[0]?.message?.content?.trim() ?? currentMessage;
+  const rewritten = response.trim() || currentMessage;
 
   if (rewritten.length > currentMessage.length * 5 || rewritten.length < 3) {
     return currentMessage;

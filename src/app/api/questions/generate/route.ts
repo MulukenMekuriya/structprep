@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAIClient, AI_MODEL } from "@/lib/ai/client";
+import { generateText } from "@/lib/ai/client";
 import { buildQuestionGenerationPrompt } from "@/lib/ai/prompts";
 import { retrieveContext } from "@/lib/rag/retriever";
 import type { NCEESTopic, Difficulty } from "@/types";
@@ -70,14 +70,10 @@ export async function POST(request: NextRequest) {
         confidence
       );
 
-      const client = getAIClient();
-      const response = await client.chat.completions.create({
-        model: AI_MODEL,
-        max_tokens: 2000,
+      const text = await generateText({
+        maxTokens: 2000,
         messages: [{ role: "user", content: prompt }],
       });
-
-      const text = response.choices[0]?.message?.content ?? "";
 
       // Extract JSON from response (handle markdown code blocks)
       const jsonMatch = text.match(/\{[\s\S]*\}/);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAIClient, AI_MODEL } from "@/lib/ai/client";
+import { generateText } from "@/lib/ai/client";
 import { buildHintPrompt } from "@/lib/ai/prompts";
 import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 
@@ -54,14 +54,10 @@ export async function POST(
 
   const prompt = buildHintPrompt(question.question_text, level as 1 | 2 | 3, contexts, confidence);
 
-  const ai = getAIClient();
-  const response = await ai.chat.completions.create({
-    model: AI_MODEL,
-    max_tokens: 1000,
+  const hint = await generateText({
+    maxTokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
-
-  const hint = response.choices[0]?.message?.content ?? "";
 
   return NextResponse.json({ hint, level });
 }

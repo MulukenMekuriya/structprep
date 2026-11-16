@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAIClient, AI_MODEL, AI_VISION_MODEL } from "@/lib/ai/client";
+import { streamText } from "@/lib/ai/client";
+import type Anthropic from "@anthropic-ai/sdk";
 import { buildTutorSystemPrompt, type TutorContext } from "@/lib/ai/prompts";
 import { retrieveContext, type RetrievalConfidence } from "@/lib/rag/retriever";
 import { rewriteQueryForRetrieval } from "@/lib/ai/query-rewriter";
@@ -99,10 +100,9 @@ export async function POST(
   }
 
   // Build system prompt
-  if (!process.env.QWEN_API_KEY) {
-    return new Response("QWEN_API_KEY is not configured", { status: 500 });
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response("ANTHROPIC_API_KEY is not configured", { status: 500 });
   }
-  const ai = getAIClient();
   const systemPrompt = buildTutorSystemPrompt(
     contexts,
     refTitles,
@@ -111,25 +111,29 @@ export async function POST(
   );
 
   // --- Build messages array, with multimodal content for images ---
-  type ChatMessage = { role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> };
-  const chatMessages: ChatMessage[] = [
-    { role: "system", content: systemPrompt },
-  ];
+  const chatMessages: Anthropic.Beta.BetaMessageParam[] = [];
 
   // Add conversation history (text-only from DB)
   for (const m of messages.slice(0, -1)) {
-    chatMessages.push({ role: m.role, content: m.content });
+    chatMessages.push({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content,
+    });
   }
 
   // Build the current user message (potentially multimodal)
   if (hasImages) {
-    const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+    const contentParts: Anthropic.Beta.BetaContentBlockParam[] = [];
 
     // Add images first so the model sees them
     for (const img of userImages!) {
       contentParts.push({
-        type: "image_url",
-        image_url: { url: `data:${img.type};base64,${img.base64}` },
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: img.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+          data: img.base64,
+        },
       });
     }
 
@@ -143,23 +147,13 @@ export async function POST(
     chatMessages.push({ role: "user", content: userMessage });
   }
 
-  // Use vision model when images are present
-  const modelToUse = hasImages ? AI_VISION_MODEL : AI_MODEL;
-
-  // --- STREAM response from Qwen ---
-  let stream;
-  try {
-    stream = await ai.chat.completions.create({
-      model: modelToUse,
-      max_tokens: 16384,
-      stream: true,
-      messages: chatMessages as Parameters<typeof ai.chat.completions.create>[0]["messages"],
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "AI model error";
-    console.error("Qwen API error:", msg);
-    return new Response(`AI model error: ${msg}`, { status: 502 });
-  }
+  // --- STREAM response from Claude ---
+  const stream = streamText({
+    system: systemPrompt,
+    maxTokens: 16384,
+    effort: "medium",
+    messages: chatMessages,
+  });
 
   const encoder = new TextEncoder();
   let fullResponse = "";
@@ -167,8 +161,7 @@ export async function POST(
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content;
+        for await (const text of stream) {
           if (text) {
             fullResponse += text;
             controller.enqueue(encoder.encode(text));

@@ -5,7 +5,7 @@
  * the calculator, then flags any inconsistencies.
  */
 
-import { getAIClient, AI_MODEL } from "./client";
+import { generateText } from "./client";
 import { evaluateExpression, type CalculatorResult } from "./calculator";
 
 export interface VerificationResult {
@@ -33,15 +33,9 @@ export async function verifyTutorResponse(
     return { verified: true, errors: [], checksPerformed: 0 };
   }
 
-  const ai = getAIClient();
-
-  const extractionResponse = await ai.chat.completions.create({
-    model: AI_MODEL,
-    max_tokens: 1000,
-    messages: [
-      {
-        role: "system",
-        content: `Extract all numerical calculations from the tutor's response. For each calculation, provide:
+  const extractionResponse = await generateText({
+    maxTokens: 1000,
+    system: `Extract all numerical calculations from the tutor's response. For each calculation, provide:
 1. The expression (using standard math notation the calculator can evaluate)
 2. The claimed result from the text
 
@@ -55,7 +49,7 @@ Rules for expressions:
 - Use PI for π
 - Expand any substituted values (e.g., if φMn = 0.9 × 60 × 3.0 × 18.5, write "0.9 * 60 * 3.0 * 18.5")
 - Skip unit conversions and purely symbolic expressions`,
-      },
+    messages: [
       {
         role: "user",
         content: `Extract verifiable calculations from this tutor response:\n\n${tutorResponse.slice(0, 3000)}`,
@@ -63,7 +57,7 @@ Rules for expressions:
     ],
   });
 
-  const extractedText = extractionResponse.choices[0]?.message?.content?.trim() ?? "[]";
+  const extractedText = extractionResponse.trim() || "[]";
 
   let claims: { expression: string; claimed_result: string; description: string }[];
   try {
